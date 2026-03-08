@@ -8,6 +8,7 @@ use std::{
 };
 
 use crossbeam_queue::SegQueue;
+use mylog::error;
 
 #[derive(Debug)]
 pub struct Worker {
@@ -46,13 +47,14 @@ impl Worker {
         running: Arc<AtomicBool>,
     ) -> Worker {
         let thread = thread::spawn(move || {
-            loop {
+            while running.load(Ordering::Relaxed) || !job_queue.is_empty() {
                 match job_queue.pop() {
                     Some(Job::Task(task)) => if let Err(_) = task() {},
-                    Some(Job::Shutdown) => {
-                        break;
-                    }
+                    Some(Job::Shutdown) => break,
                     None => {
+                        if !running.load(Ordering::Relaxed) {
+                            break;
+                        }
                         let (lock, cvar) = &*job_signal;
                         let mut job_available = lock.lock().unwrap();
                         while !*job_available && running.load(Ordering::Relaxed) {
@@ -135,7 +137,7 @@ impl ThreadPool {
                 cvar.notify_all();
             }
             Err(_) => {
-                println!(
+                error!(
                     "Warning: Couldn't acquire lock to notify workers. They will exit on their next timeout check."
                 );
             }

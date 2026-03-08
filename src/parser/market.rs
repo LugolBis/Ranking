@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Sub, str::FromStr};
 
 use crate::{
     parser::api::{ParseErr, Parsed},
@@ -151,16 +151,18 @@ fn parse_line(couple: (usize, String)) -> Result<Parsed, ParseErr> {
     let (index, line) = couple;
     let mut iter = line.split(' ').flat_map(|v| v.parse::<f64>());
 
-    let row_idx = iter
+    let row_idx = (iter
         .next()
         .ok_or_else(|| ParseErr::Value("Failed to get the row index.".to_string(), index))?
-        as usize
-        - 1;
-    let col_idx = iter
+        as usize)
+        .checked_sub(1)
+        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), index))?;
+    let col_idx = (iter
         .next()
         .ok_or_else(|| ParseErr::Value("Failed to get the column index.".to_string(), index))?
-        as usize
-        - 1;
+        as usize)
+        .checked_sub(1)
+        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), index))?;
     let val = iter.next().unwrap_or(1.0);
 
     Ok(Parsed::new(row_idx, col_idx, val))
