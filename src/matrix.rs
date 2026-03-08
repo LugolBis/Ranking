@@ -8,6 +8,7 @@ use std::{
 use mylog::error;
 
 use crate::{
+    maths::{compute_norm, uniform_vector},
     pool::ThreadPool,
     types::{Shape, Value},
 };
@@ -114,7 +115,7 @@ impl CSC {
             }
         }
 
-        pool.shutdown(Duration::from_millis(2))
+        pool.shutdown(Duration::from_secs(2))
             .map_err(|e| error!("{:?}", e))?;
         drop(tx);
 
@@ -123,6 +124,30 @@ impl CSC {
             result[index] = coef;
         }
         Ok(result)
+    }
+
+    pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), ()> {
+        assert_ne!(1f64 - (1f64 - epsilon), 0_f64);
+
+        let mut pi_even = uniform_vector(self.shape.rows() as usize);
+        let mut pi_odd = pi_even.clone();
+        let mut counter = 0usize;
+        let mut need_check = false;
+        let mut norm = 1.0;
+
+        while norm > epsilon {
+            pi_odd = self.mult_vec(&pi_even)?;
+            pi_even = self.mult_vec(&pi_odd)?;
+
+            if need_check {
+                norm = compute_norm(&pi_even, &pi_odd);
+            }
+
+            need_check = !need_check;
+            counter += 1;
+        }
+
+        Ok((pi_even, counter))
     }
 }
 
