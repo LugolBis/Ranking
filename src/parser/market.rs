@@ -1,9 +1,6 @@
-use std::{
-    str::FromStr,
-    sync::{Arc, mpsc},
-    thread,
-    time::Duration,
-};
+use std::{str::FromStr, sync::Arc, thread, time::Duration};
+
+use crossbeam_channel::unbounded;
 
 use crate::{
     parser::{
@@ -146,7 +143,7 @@ pub fn market_parser(
                 .map_err(|_| ParseErr::Thread("Failed to get availlable threds.".into()))?
                 .get();
             let mut pool = ThreadPool::new(nb_threads);
-            let (tx, rx) = mpsc::channel::<Result<Chunk, ParseErr>>();
+            let (tx, rx) = unbounded::<Result<Chunk, ParseErr>>();
 
             let lines = Arc::new(iterator.enumerate().collect::<Vec<(usize, String)>>());
             let total_len = lines.len();
@@ -249,16 +246,20 @@ fn parse_chunk(
 
 fn parse_line(couple: &(usize, String)) -> Result<(usize, usize), ParseErr> {
     let (index, line) = couple;
-    let mut iter = line.split_whitespace().flat_map(|v| v.parse::<usize>());
+    let mut parts = line.split_whitespace();
 
-    let row_idx = iter
+    let row_idx = parts
         .next()
         .ok_or_else(|| ParseErr::Value("Failed to get the row index.".to_string(), *index))?
+        .parse::<usize>()
+        .map_err(|_| ParseErr::Value("Failed to parse row index.".to_string(), *index))?
         .checked_sub(1)
         .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
-    let col_idx = iter
+    let col_idx = parts
         .next()
         .ok_or_else(|| ParseErr::Value("Failed to get the column index.".to_string(), *index))?
+        .parse::<usize>()
+        .map_err(|_| ParseErr::Value("Failed to parse column index.".to_string(), *index))?
         .checked_sub(1)
         .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
 
