@@ -1,5 +1,3 @@
-use std::ops::DivAssign;
-
 use crate::parser::api::Parsed;
 
 #[derive(Debug, Clone, Copy)]
@@ -10,7 +8,8 @@ pub struct Coord {
 
 pub struct Chunk {
     id: usize,
-    values: Vec<Coord>,
+    coords: Vec<Coord>,
+    row_count: Vec<u64>,
 }
 
 impl Coord {
@@ -23,10 +22,11 @@ impl Coord {
 }
 
 impl Chunk {
-    pub fn from(chunk_id: usize, chunk_c: Vec<Coord>) -> Chunk {
+    pub fn from(chunk_id: usize, coords: Vec<Coord>, row_count: Vec<u64>) -> Chunk {
         Chunk {
             id: chunk_id,
-            values: chunk_c,
+            coords,
+            row_count,
         }
     }
 
@@ -34,8 +34,12 @@ impl Chunk {
         self.id
     }
 
+    pub fn get_row_count(&self) -> &Vec<u64> {
+        &self.row_count
+    }
+
     pub fn into_parsed(&self, row_count: &[u64]) -> Vec<Parsed> {
-        self.values
+        self.coords
             .clone()
             .into_iter()
             .map(|coord| {
