@@ -22,6 +22,7 @@ pub enum ParseErr {
     Shape(String),
     Value(String, usize),
     Index(String, usize),
+    Thread(String),
     CSC,
 }
 

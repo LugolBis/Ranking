@@ -1,7 +1,16 @@
-use std::{ops::Sub, str::FromStr};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+    time::Duration,
+};
 
 use crate::{
-    parser::api::{ParseErr, Parsed},
+    parser::{
+        api::{ParseErr, Parsed},
+        chunk::{Chunk, Coord},
+    },
+    pool::ThreadPool,
     types::Shape,
 };
 
@@ -133,12 +142,63 @@ pub fn market_parser(
         ) => {
             let shape = Shape::from(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
 
-            let result = iterator
-                .enumerate()
-                .map(parse_line)
-                .collect::<Result<Vec<Parsed>, ParseErr>>()?;
+            let nb_threads = thread::available_parallelism()
+                .map_err(|_| ParseErr::Thread("Failed to get availlable threds.".into()))?
+                .get();
+            let mut pool = ThreadPool::new(nb_threads);
+            let (tx, rx) = mpsc::channel::<Result<Chunk, ParseErr>>();
 
-            Ok((shape, result))
+            let lines = Arc::new(iterator.enumerate().collect::<Vec<(usize, String)>>());
+            let total_len = lines.len();
+            let chunk_size = (total_len + nb_threads - 1) / nb_threads;
+
+            let row_count = Arc::new(Mutex::new(vec![0u64; shape.rows() as usize]));
+
+            for chunk_id in 0..nb_threads {
+                let start = chunk_id * chunk_size;
+                if start >= total_len {
+                    break;
+                }
+                let end = (start + chunk_size).min(total_len);
+
+                let tx_c = tx.clone();
+                let mut row_c = Arc::clone(&row_count);
+                let lines_ref = Arc::clone(&lines);
+
+                pool.execute(move || {
+                    match parse_chunk(&mut row_c, &lines_ref[start..end]) {
+                        Ok(chunk_c) => {
+                            tx_c.send(Ok(Chunk::from(chunk_id, chunk_c)))
+                                .map_err(|_| Box::<dyn std::error::Error>::from("Send error."))?;
+                        }
+                        Err(err) => {
+                            tx_c.send(Err(err))
+                                .map_err(|_| Box::<dyn std::error::Error>::from("Send error."))?;
+                        }
+                    }
+
+                    Ok(())
+                })
+                .expect("Failed to execute job");
+            }
+            pool.shutdown(Duration::from_secs(2))
+                .map_err(|e| ParseErr::Thread(format!("Pool error : {:?}", e)))?;
+            drop(tx);
+
+            let mut chunks = Vec::new();
+            for res in rx.into_iter() {
+                chunks.push(res?);
+            }
+            chunks.sort_by_key(|c| c.get_id());
+
+            let guard = row_count.lock().unwrap();
+            Ok((
+                shape,
+                chunks
+                    .into_iter()
+                    .flat_map(|chunk| chunk.into_parsed(&guard[..]))
+                    .collect::<Vec<Parsed>>(),
+            ))
         }
         _ => Err(ParseErr::Header(format!(
             "Parser isn't yet implemented for : {:?}",
@@ -147,23 +207,48 @@ pub fn market_parser(
     }
 }
 
-fn parse_line(couple: (usize, String)) -> Result<Parsed, ParseErr> {
+fn parse_chunk(
+    row_c: &mut Arc<Mutex<Vec<u64>>>,
+    chunk: &[(usize, String)],
+) -> Result<Vec<Coord>, ParseErr> {
+    let mut chunk_c = Vec::new();
+
+    for couple in chunk {
+        match parse_line(couple) {
+            Ok((row_idx, col_idx)) => {
+                let mut lock = row_c.lock();
+
+                if let Ok(ref mut mutex) = lock {
+                    chunk_c.push(Coord::from(row_idx, col_idx));
+                    mutex[row_idx] += 1;
+                } else {
+                    return Err(ParseErr::Thread("Failed to acquire mutex lock.".into()));
+                }
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
+    Ok(chunk_c)
+}
+
+fn parse_line(couple: &(usize, String)) -> Result<(usize, usize), ParseErr> {
     let (index, line) = couple;
     let mut iter = line.split(' ').flat_map(|v| v.parse::<f64>());
 
     let row_idx = (iter
         .next()
-        .ok_or_else(|| ParseErr::Value("Failed to get the row index.".to_string(), index))?
+        .ok_or_else(|| ParseErr::Value("Failed to get the row index.".to_string(), *index))?
         as usize)
         .checked_sub(1)
-        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), index))?;
+        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
     let col_idx = (iter
         .next()
-        .ok_or_else(|| ParseErr::Value("Failed to get the column index.".to_string(), index))?
+        .ok_or_else(|| ParseErr::Value("Failed to get the column index.".to_string(), *index))?
         as usize)
         .checked_sub(1)
-        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), index))?;
-    let val = iter.next().unwrap_or(1.0);
+        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
 
-    Ok(Parsed::new(row_idx, col_idx, val))
+    Ok((row_idx, col_idx))
 }
