@@ -181,10 +181,14 @@ pub fn market_parser(
             drop(tx);
 
             let mut chunks_opt: Vec<Option<Chunk>> = (0..nb_threads).map(|_| None).collect();
+            let mut step = 0f64;
             for res in rx {
                 let chunk = res?;
                 let index = &chunk.get_id();
                 chunks_opt[*index] = Some(chunk);
+
+                step += 1f64;
+                println!("[Parsing {}%]", (step / nb_threads as f64) * 100f64)
             }
             let chunks = chunks_opt.iter().flatten().collect::<Vec<&Chunk>>();
             let row_count = join_row_count(&chunks)?;

@@ -156,6 +156,7 @@ impl CSC {
 
             if need_check {
                 norm = compute_norm(&pi_even, &pi_odd);
+                println!("Step = {} - Norm = {}", step, norm);
             }
 
             need_check = !need_check;
