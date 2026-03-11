@@ -14,22 +14,6 @@ pub struct Column {
     pub rows: LinkedList<Value>,
 }
 
-#[derive(Debug, Clone)]
-pub enum CSCErr {
-    ShapeColumn(Shape, usize),
-    Thread(String),
-    SendErr,
-    Epsilon(f64),
-    Shape(usize, usize),
-}
-
-#[derive(Debug, Clone)]
-pub enum CLIErr {
-    Alpha(String),
-    Epsilon(String),
-    File(String),
-}
-
 impl Shape {
     pub fn new(rows: u64, columns: u64) -> Shape {
         Shape { rows, columns }

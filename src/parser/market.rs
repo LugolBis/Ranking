@@ -3,8 +3,9 @@ use std::{str::FromStr, sync::Arc, thread, time::Duration};
 use crossbeam_channel::unbounded;
 
 use crate::{
+    errors::{ParseErr, RefErr},
     parser::{
-        api::{ParseErr, Parsed},
+        api::Parsed,
         chunk::{Chunk, Coord},
     },
     pool::ThreadPool,
@@ -162,22 +163,24 @@ pub fn market_parser(
                 pool.execute(move || {
                     match parse_chunk(chunk_id, &lines_ref[start..end], shape.rows() as usize) {
                         Ok(chunk) => {
-                            tx_c.send(Ok(chunk))
-                                .map_err(|_| Box::<dyn std::error::Error>::from("Send error."))?;
+                            tx_c.send(Ok(chunk)).map_err(|_| {
+                                Box::new(ParseErr::Thread("Sender error.".into())) as RefErr
+                            })?;
                         }
                         Err(err) => {
-                            tx_c.send(Err(err))
-                                .map_err(|_| Box::<dyn std::error::Error>::from("Send error."))?;
+                            tx_c.send(Err(err)).map_err(|_| {
+                                Box::new(ParseErr::Thread("Sender error.".into())) as RefErr
+                            })?;
                         }
                     }
 
                     Ok(())
                 })
-                .expect("Failed to execute job");
+                .map_err(|e| ParseErr::Thread(format!("ThreadPool error {:?}", e)))?;
             }
 
             pool.shutdown(Duration::from_secs(2))
-                .map_err(|e| ParseErr::Thread(format!("Pool error : {:?}", e)))?;
+                .map_err(|e| ParseErr::Thread(format!("ThreadPool error : {:?}", e)))?;
             drop(tx);
 
             let mut chunks_opt: Vec<Option<Chunk>> = (0..nb_threads).map(|_| None).collect();
@@ -255,18 +258,18 @@ fn parse_line(couple: &(usize, String)) -> Result<(usize, usize), ParseErr> {
 
     let row_idx = parts
         .next()
-        .ok_or_else(|| ParseErr::Value("Failed to get the row index.".to_string(), *index))?
+        .ok_or_else(|| ParseErr::Value("Failed to get the row index".to_string(), *index))?
         .parse::<usize>()
-        .map_err(|_| ParseErr::Value("Failed to parse row index.".to_string(), *index))?
+        .map_err(|_| ParseErr::Value("Failed to parse row index".to_string(), *index))?
         .checked_sub(1)
-        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
+        .ok_or_else(|| ParseErr::Index("Too low index (0)".to_string(), *index))?;
     let col_idx = parts
         .next()
-        .ok_or_else(|| ParseErr::Value("Failed to get the column index.".to_string(), *index))?
+        .ok_or_else(|| ParseErr::Value("Failed to get the column index".to_string(), *index))?
         .parse::<usize>()
-        .map_err(|_| ParseErr::Value("Failed to parse column index.".to_string(), *index))?
+        .map_err(|_| ParseErr::Value("Failed to parse column index".to_string(), *index))?
         .checked_sub(1)
-        .ok_or_else(|| ParseErr::Index("Too low index (0).".to_string(), *index))?;
+        .ok_or_else(|| ParseErr::Index("Too low index (0)".to_string(), *index))?;
 
     Ok((row_idx, col_idx))
 }

@@ -4,6 +4,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf;
 
+use crate::errors::ParseErr;
 use crate::matrix::CSC;
 use crate::types::Shape;
 use crate::types::Value;
@@ -13,17 +14,6 @@ pub struct Parsed {
     row_idx: usize,
     col_idx: usize,
     val: f64,
-}
-
-#[derive(Debug, Clone)]
-pub enum ParseErr {
-    File(String),
-    Header(String),
-    Shape(String),
-    Value(String, usize),
-    Index(String, usize),
-    Thread(String),
-    CSC,
 }
 
 impl Parsed {

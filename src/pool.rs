@@ -9,15 +9,18 @@ use std::{
 
 use crossbeam_queue::SegQueue;
 
+use crate::errors::{RefErr, ThreadPoolErr};
+
 #[derive(Debug)]
 pub struct Worker {
     /// Random ID to distinguish different workers.
     id: usize,
     thread: Option<thread::JoinHandle<()>>,
+    error: Option<String>,
 }
 
 pub enum Job {
-    Task(Box<dyn FnOnce() -> Result<(), Box<dyn std::error::Error>> + Send + 'static>),
+    Task(Box<dyn FnOnce() -> Result<(), RefErr> + Send + 'static>),
     Shutdown,
 }
 
@@ -32,13 +35,6 @@ pub struct ThreadPool {
     running: Arc<AtomicBool>,
 }
 
-#[derive(Debug)]
-pub enum ThreadPoolErr {
-    ShutdownTimeout,
-    ThreadJoin(String),
-    JobSignal(String),
-}
-
 impl Worker {
     fn new(
         id: usize,
@@ -46,10 +42,19 @@ impl Worker {
         job_signal: Arc<(Mutex<bool>, Condvar)>,
         running: Arc<AtomicBool>,
     ) -> Worker {
+        let error_shared = Arc::new(Mutex::new(None));
+        let error_c = Arc::clone(&error_shared);
+
         let thread = thread::spawn(move || {
             while running.load(Ordering::Relaxed) || !job_queue.is_empty() {
                 match job_queue.pop() {
-                    Some(Job::Task(task)) => if let Err(_) = task() {},
+                    Some(Job::Task(task)) => {
+                        if let Err(e) = task() {
+                            if let Ok(mut mutex) = error_c.lock() {
+                                *mutex = Some(e.to_string());
+                            }
+                        }
+                    }
                     Some(Job::Shutdown) => break,
                     None => {
                         if !running.load(Ordering::Relaxed) {
@@ -69,9 +74,17 @@ impl Worker {
             }
         });
 
+        let error: Option<String>;
+        if let Ok(mut lock) = error_shared.lock() {
+            error = lock.take();
+        } else {
+            error = None;
+        }
+
         Worker {
             id,
             thread: Some(thread),
+            error,
         }
     }
 }
@@ -104,7 +117,7 @@ impl ThreadPool {
 
     pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolErr>
     where
-        F: FnOnce() -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
+        F: FnOnce() -> Result<(), RefErr> + Send + 'static,
     {
         // Create a new Job::Task by wrapping the closure 'func'
         let job = Job::Task(Box::new(func));
@@ -163,9 +176,17 @@ impl ThreadPool {
                         worker.id
                     )));
                 }
+
+                // 7 : Check the task was successfully executed.
+                if let Some(e) = &worker.error {
+                    return Err(ThreadPoolErr::ThreadExec(format!(
+                        "Worker {} encounter the following error during execution : {:?}",
+                        worker.id, e
+                    )));
+                }
             }
         }
-        // 7 : Final timeout check.
+        // 8 : Final timeout check.
         if start.elapsed() > timeout {
             Err(ThreadPoolErr::ShutdownTimeout)
         } else {

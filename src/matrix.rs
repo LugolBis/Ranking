@@ -1,14 +1,12 @@
-use std::{
-    collections::LinkedList,
-    sync::Arc,
-    thread::{self, JoinHandle},
-};
+use std::{collections::LinkedList, sync::Arc, thread, time::Duration};
 
 use crossbeam_channel::{Sender, unbounded};
 
 use crate::{
+    errors::{CSCErr, RefErr},
     maths::{compute_norm, uniform_vector},
-    types::{CSCErr, Column, Shape, Value},
+    pool::ThreadPool,
+    types::{Column, Shape, Value},
 };
 
 pub type RefCol = Arc<Column>;
@@ -71,7 +69,7 @@ impl CSC {
         let rows_len = self.shape.rows() as usize;
 
         if rows_len != pi.len() {
-            return Err(CSCErr::Shape(rows_len, pi.len()));
+            return Err(CSCErr::ShapeVec(rows_len, pi.len()));
         }
 
         let nb_threads = thread::available_parallelism()
@@ -79,16 +77,16 @@ impl CSC {
                 CSCErr::Thread("Failed to get the number of availlable parallelisme.".into())
             })?
             .get();
+        let mut pool: ThreadPool = ThreadPool::new(nb_threads);
         let (tx, rx) = unbounded();
-        let mut pool: Vec<JoinHandle<Result<(), CSCErr>>> = Vec::new();
 
         let total_len = self.shape.rows() as usize;
-        let chunk_size = (total_len + nb_threads - 1) / nb_threads;
+        let chunk_size = (total_len + nb_threads / 2 - 1) / nb_threads / 2;
 
         let columns = Arc::new(self.columns.clone());
         let pi_shared = Arc::new(pi.to_vec());
 
-        for chunk_id in 0..nb_threads {
+        for chunk_id in 0..nb_threads * 2 {
             let start = chunk_id * chunk_size;
             if start >= total_len {
                 break;
@@ -100,19 +98,14 @@ impl CSC {
             let columns_c = Arc::clone(&columns);
             let alpha = *&self.alpha;
 
-            pool.push(thread::spawn(move || {
-                compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end)
-            }));
+            pool.execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end));
         }
 
-        for thread_join in pool {
-            let _ = thread_join
-                .join()
-                .map_err(|e| CSCErr::Thread(format!("{:?}", e)))?;
-        }
+        pool.shutdown(Duration::from_secs(2))
+            .map_err(|e| CSCErr::Thread(format!("ThreadPool error : {:?}", e)))?;
         drop(tx);
 
-        let mut result = vec![Vec::new(); nb_threads];
+        let mut result = vec![Vec::new(); nb_threads * 2];
         for (chunk_id, chunk) in rx.iter() {
             result[chunk_id] = chunk;
         }
@@ -161,7 +154,7 @@ fn compute_mult(
     chunk_id: usize,
     start: usize,
     end: usize,
-) -> Result<(), CSCErr> {
+) -> Result<(), RefErr> {
     let mut local_vec = vec![0.0; end - start];
 
     for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
@@ -174,7 +167,7 @@ fn compute_mult(
         }
     }
     tx_c.send((chunk_id, local_vec))
-        .map_err(|_| CSCErr::SendErr)?;
+        .map_err(|_| Box::new(CSCErr::SendErr) as RefErr)?;
     Ok(())
 }
 

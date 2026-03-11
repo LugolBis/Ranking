@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use crate::types::CLIErr;
+use crate::errors::CLIErr;
 
 // Absolute path to the .env file (demined at compile time)
 const ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.env");
