@@ -15,7 +15,7 @@ fn main() {
             let m = parse_file(PathBuf::from(path), market_parser);
             match m {
                 Ok(matrix) => {
-                    if let Ok((vec, steps)) = matrix.stationary_distribution(0.0000000001) {
+                    if let Ok((vec, steps)) = matrix.stationary_distribution(0.0001) {
                         println!("Vec = {:?}", vec);
                         println!("Step : {}", steps);
                     };

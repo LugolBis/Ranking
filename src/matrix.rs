@@ -1,15 +1,14 @@
 use std::{
     collections::LinkedList,
-    sync::{Arc, mpsc},
-    thread,
-    time::Duration,
+    sync::Arc,
+    thread::{self, JoinHandle},
 };
 
+use crossbeam_channel::unbounded;
 use mylog::error;
 
 use crate::{
     maths::{compute_norm, uniform_vector},
-    pool::ThreadPool,
     types::{Shape, Value},
 };
 
@@ -90,48 +89,64 @@ impl CSC {
         }
 
         let nb_threads = thread::available_parallelism().map_err(|_| ())?.get();
-        let columns = self.columns.clone();
+        let (tx, rx) = unbounded();
+        let mut pool: Vec<JoinHandle<Result<(), String>>> = Vec::new();
+
+        let total_len = self.shape.rows() as usize;
+        let chunk_size = (total_len + nb_threads - 1) / nb_threads;
+
+        let columns = Arc::new(self.columns.clone());
         let pi_shared = Arc::new(pi.to_vec());
 
-        let (tx, rx) = mpsc::channel();
-        let mut pool = ThreadPool::new(nb_threads);
-
-        for (col_idx, opt) in columns.into_iter().enumerate() {
-            if let Some(column) = opt {
-                let tx = tx.clone();
-                let pi_c = Arc::clone(&pi_shared);
-                pool.execute(move || {
-                    let mut local = 0.0;
-
-                    for &value in column.rows.iter() {
-                        local += pi_c[value.0] * value.1
-                    }
-
-                    tx.send((col_idx, local))
-                        .map_err(|_| Box::<dyn std::error::Error>::from("Send error."))?;
-                    Ok(())
-                })
-                .expect("Failed to execute job");
+        for chunk_id in 0..nb_threads {
+            let start = chunk_id * chunk_size;
+            if start >= total_len {
+                break;
             }
+            let end = (start + chunk_size).min(total_len);
+
+            let tx_c = tx.clone();
+            let pi_c = Arc::clone(&pi_shared);
+            let columns_c = Arc::clone(&columns);
+
+            pool.push(thread::spawn(move || {
+                let mut local_vec = vec![0.0; end - start];
+
+                for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
+                    if let Some(column) = opt {
+                        let mut local = 0.0;
+
+                        for &value in column.rows.iter() {
+                            local += pi_c[value.0] * value.1;
+                        }
+                        local_vec[col_idx] = local;
+                    }
+                }
+                tx_c.send((chunk_id, local_vec))
+                    .map_err(|_| "Send error".to_string())?;
+                Ok(())
+            }));
         }
 
-        pool.shutdown(Duration::from_secs(2))
-            .map_err(|e| error!("{:?}", e))?;
+        for thread_join in pool {
+            let _ = thread_join.join().map_err(|e| error!("{:?}", e))?;
+        }
         drop(tx);
 
-        let mut result = vec![0.0; self.shape.columns() as usize];
-        for (index, coef) in rx.iter() {
-            result[index] = coef;
+        let mut result = vec![Vec::new(); nb_threads];
+        for (chunk_id, chunk) in rx.iter() {
+            result[chunk_id] = chunk;
         }
-        Ok(result)
+
+        Ok(result.into_iter().flatten().collect())
     }
 
     pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), ()> {
-        assert_ne!(1f64 - (1f64 - epsilon), 0_f64);
+        assert_ne!(1f64 - (1f64 - epsilon), 0f64);
 
         let mut pi_even = uniform_vector(self.shape.rows() as usize);
         let mut pi_odd = pi_even.clone();
-        let mut counter = 0usize;
+        let mut step = 0usize;
         let mut need_check = false;
         let mut norm = 1.0;
 
@@ -144,10 +159,10 @@ impl CSC {
             }
 
             need_check = !need_check;
-            counter += 1;
+            step += 1;
         }
 
-        Ok((pi_even, counter))
+        Ok((pi_even, step))
     }
 }
 
