@@ -1,3 +1,5 @@
+use std::collections::LinkedList;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Value(pub usize, pub f64);
 
@@ -5,6 +7,20 @@ pub struct Value(pub usize, pub f64);
 pub struct Shape {
     rows: u64,
     columns: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Column {
+    pub rows: LinkedList<Value>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CSCErr {
+    ShapeColumn(Shape, usize),
+    Thread(String),
+    SendErr,
+    Epsilon(f64),
+    Shape(usize, usize),
 }
 
 impl Shape {
@@ -41,5 +57,15 @@ impl Shape {
 
     pub fn columns(&self) -> u64 {
         self.columns
+    }
+}
+
+impl Column {
+    pub fn from(rows: LinkedList<Value>) -> Column {
+        Column { rows }
+    }
+
+    pub fn get_value(&self, row_idx: usize) -> Option<&Value> {
+        self.rows.iter().find(|v| v.0 == row_idx)
     }
 }

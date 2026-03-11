@@ -8,7 +8,6 @@ use std::{
 };
 
 use crossbeam_queue::SegQueue;
-use mylog::error;
 
 #[derive(Debug)]
 pub struct Worker {
@@ -34,9 +33,10 @@ pub struct ThreadPool {
 }
 
 #[derive(Debug)]
-pub enum ThreadPoolError {
+pub enum ThreadPoolErr {
     ShutdownTimeout,
-    ThreadJoinError(String),
+    ThreadJoin(String),
+    JobSignal(String),
 }
 
 impl Worker {
@@ -102,7 +102,7 @@ impl ThreadPool {
         }
     }
 
-    pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolError>
+    pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolErr>
     where
         F: FnOnce() -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
     {
@@ -120,7 +120,7 @@ impl ThreadPool {
         Ok(())
     }
 
-    pub fn shutdown(&mut self, timeout: Duration) -> Result<(), ThreadPoolError> {
+    pub fn shutdown(&mut self, timeout: Duration) -> Result<(), ThreadPoolErr> {
         let start = Instant::now();
         // 1 : Signal all workers to stop.
         for _ in 0..self.workers.len() {
@@ -137,8 +137,8 @@ impl ThreadPool {
                 cvar.notify_all();
             }
             Err(_) => {
-                error!(
-                    "Warning: Couldn't acquire lock to notify workers. They will exit on their next timeout check."
+                ThreadPoolErr::JobSignal(
+                    "Warning: Couldn't acquire lock to notify workers. They will exit on their next timeout check.".into()
                 );
             }
         }
@@ -153,12 +153,12 @@ impl ThreadPool {
 
                 // 5 : Check if we've exceeded the timeout.
                 if remaining.is_zero() {
-                    return Err(ThreadPoolError::ShutdownTimeout);
+                    return Err(ThreadPoolErr::ShutdownTimeout);
                 }
 
                 // 6 : Wait for the worker to finish.
                 if thread.join().is_err() {
-                    return Err(ThreadPoolError::ThreadJoinError(format!(
+                    return Err(ThreadPoolErr::ThreadJoin(format!(
                         "Worker {} failed to join",
                         worker.id
                     )));
@@ -167,7 +167,7 @@ impl ThreadPool {
         }
         // 7 : Final timeout check.
         if start.elapsed() > timeout {
-            Err(ThreadPoolError::ShutdownTimeout)
+            Err(ThreadPoolErr::ShutdownTimeout)
         } else {
             Ok(())
         }

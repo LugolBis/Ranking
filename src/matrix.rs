@@ -5,19 +5,13 @@ use std::{
 };
 
 use crossbeam_channel::{Sender, unbounded};
-use mylog::error;
 
 use crate::{
     maths::{compute_norm, uniform_vector},
-    types::{Shape, Value},
+    types::{CSCErr, Column, Shape, Value},
 };
 
 pub type RefCol = Arc<Column>;
-
-#[derive(Debug, Clone)]
-pub struct Column {
-    rows: LinkedList<Value>,
-}
 
 #[derive(Debug, Clone)]
 pub struct CSC {
@@ -28,29 +22,15 @@ pub struct CSC {
     alpha: f64,
 }
 
-impl Column {
-    pub fn from(rows: LinkedList<Value>) -> Column {
-        Column { rows }
-    }
-
-    pub fn get_value(&self, row_idx: usize) -> Option<&Value> {
-        self.rows.iter().find(|v| v.0 == row_idx)
-    }
-}
-
 impl CSC {
     pub fn from(
         shape: Shape,
         columns: Vec<Option<LinkedList<Value>>>,
         row_count: Vec<u64>,
         alpha: f64,
-    ) -> Result<CSC, ()> {
+    ) -> Result<CSC, CSCErr> {
         if shape.columns() as usize != columns.len() {
-            Err(error!(
-                "Invalide shape {:?} for the columns of len {}",
-                shape,
-                columns.len()
-            ))
+            Err(CSCErr::ShapeColumn(shape, columns.len()))
         } else {
             Ok(CSC {
                 shape,
@@ -87,20 +67,20 @@ impl CSC {
         None
     }
 
-    pub fn mult_vec(&self, pi: &[f64]) -> Result<Vec<f64>, ()> {
+    pub fn mult_vec(&self, pi: &[f64]) -> Result<Vec<f64>, CSCErr> {
         let rows_len = self.shape.rows() as usize;
 
         if rows_len != pi.len() {
-            return Err(error!(
-                "Matrix ({:?}) can't be multiplied with a vector of {:?}",
-                self.shape,
-                pi.len()
-            ));
+            return Err(CSCErr::Shape(rows_len, pi.len()));
         }
 
-        let nb_threads = thread::available_parallelism().map_err(|_| ())?.get();
+        let nb_threads = thread::available_parallelism()
+            .map_err(|_| {
+                CSCErr::Thread("Failed to get the number of availlable parallelisme.".into())
+            })?
+            .get();
         let (tx, rx) = unbounded();
-        let mut pool: Vec<JoinHandle<Result<(), String>>> = Vec::new();
+        let mut pool: Vec<JoinHandle<Result<(), CSCErr>>> = Vec::new();
 
         let total_len = self.shape.rows() as usize;
         let chunk_size = (total_len + nb_threads - 1) / nb_threads;
@@ -126,7 +106,9 @@ impl CSC {
         }
 
         for thread_join in pool {
-            let _ = thread_join.join().map_err(|e| error!("{:?}", e))?;
+            let _ = thread_join
+                .join()
+                .map_err(|e| CSCErr::Thread(format!("{:?}", e)))?;
         }
         drop(tx);
 
@@ -143,8 +125,10 @@ impl CSC {
             .collect())
     }
 
-    pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), ()> {
-        assert_ne!(1f64 - (1f64 - epsilon), 0f64);
+    pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), CSCErr> {
+        if 1f64 - (1f64 - epsilon) == 0f64 {
+            return Err(CSCErr::Epsilon(epsilon));
+        }
 
         let mut pi_even = uniform_vector(self.shape.rows() as usize);
         let mut pi_odd = pi_even.clone();
@@ -177,7 +161,7 @@ fn compute_mult(
     chunk_id: usize,
     start: usize,
     end: usize,
-) -> Result<(), String> {
+) -> Result<(), CSCErr> {
     let mut local_vec = vec![0.0; end - start];
 
     for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
@@ -190,7 +174,7 @@ fn compute_mult(
         }
     }
     tx_c.send((chunk_id, local_vec))
-        .map_err(|_| "Send error".to_string())?;
+        .map_err(|_| CSCErr::SendErr)?;
     Ok(())
 }
 
