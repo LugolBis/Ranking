@@ -36,14 +36,14 @@ impl Parsed {
     }
 }
 
-pub fn parse_file<F>(path: PathBuf, fn_parse: F) -> Result<CSC, ParseErr>
+pub fn parse_file<F>(path: PathBuf, fn_parse: F, alpha: f64) -> Result<CSC, ParseErr>
 where
-    F: Fn(&mut dyn Iterator<Item = String>) -> Result<(Shape, Vec<Parsed>), ParseErr>,
+    F: Fn(&mut dyn Iterator<Item = String>) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,
 {
     let file = File::open(path).map_err(|e| ParseErr::File(e.to_string()))?;
     let mut buffer = BufReader::new(file).lines().flatten();
 
-    let (shape, parsed) = fn_parse(&mut buffer)?;
+    let (shape, parsed, row_count) = fn_parse(&mut buffer)?;
     let mut values: Vec<Option<LinkedList<Value>>> = vec![None; shape.columns() as usize];
 
     // We supposed that the parsed values are sorted by rows.
@@ -57,5 +57,5 @@ where
             }
         }
     }
-    CSC::from(shape, values).map_err(|_| ParseErr::CSC)
+    CSC::from(shape, values, row_count, alpha).map_err(|_| ParseErr::CSC)
 }

@@ -3,6 +3,9 @@ use ranking::parser::{api::parse_file, market::market_parser};
 use ranking::utils::load_env;
 use std::path::PathBuf;
 
+const ALPHA: f64 = 0.85;
+const EPSILON: f64 = 1e-6;
+
 fn main() {
     match init("logs".to_string(), "100mo".to_string(), "1day".to_string()) {
         Ok(_) => {
@@ -12,11 +15,11 @@ fn main() {
             }
 
             let path = std::env::var("MATRIX_PATH").unwrap();
-            let m = parse_file(PathBuf::from(path), market_parser);
+            let m = parse_file(PathBuf::from(path), market_parser, ALPHA);
             match m {
                 Ok(matrix) => {
-                    if let Ok((vec, steps)) = matrix.stationary_distribution(0.0001) {
-                        println!("Vec = {:?}", vec);
+                    if let Ok((vec, steps)) = matrix.stationary_distribution(EPSILON) {
+                        println!("Sum of distribution = {:?}", vec.iter().sum::<f64>());
                         println!("Step : {}", steps);
                     };
                 }

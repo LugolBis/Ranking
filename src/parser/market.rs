@@ -125,7 +125,7 @@ impl Header {
 
 pub fn market_parser(
     iterator: &mut dyn Iterator<Item = String>,
-) -> Result<(Shape, Vec<Parsed>), ParseErr> {
+) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr> {
     let header = Header::from(iterator.next())?;
 
     let mut iterator = iterator.skip_while(|l| l.starts_with('%'));
@@ -199,6 +199,7 @@ pub fn market_parser(
                     .into_iter()
                     .flat_map(|chunk| chunk.into_parsed(&row_count[..]))
                     .collect::<Vec<Parsed>>(),
+                row_count,
             ))
         }
         _ => Err(ParseErr::Header(format!(

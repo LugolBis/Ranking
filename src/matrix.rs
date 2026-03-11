@@ -4,7 +4,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use crossbeam_channel::unbounded;
+use crossbeam_channel::{Sender, unbounded};
 use mylog::error;
 
 use crate::{
@@ -23,6 +23,9 @@ pub struct Column {
 pub struct CSC {
     shape: Shape,
     columns: Vec<Option<RefCol>>,
+    // f est un vecteur ligne de taille N tel que f [i] = 1 si la ligne i de P ne contient que des zéros et sinon f [i] = 0
+    f: Vec<f64>,
+    alpha: f64,
 }
 
 impl Column {
@@ -36,7 +39,12 @@ impl Column {
 }
 
 impl CSC {
-    pub fn from(shape: Shape, columns: Vec<Option<LinkedList<Value>>>) -> Result<CSC, ()> {
+    pub fn from(
+        shape: Shape,
+        columns: Vec<Option<LinkedList<Value>>>,
+        row_count: Vec<u64>,
+        alpha: f64,
+    ) -> Result<CSC, ()> {
         if shape.columns() as usize != columns.len() {
             Err(error!(
                 "Invalide shape {:?} for the columns of len {}",
@@ -56,6 +64,8 @@ impl CSC {
                         }
                     })
                     .collect(),
+                f: get_f(row_count),
+                alpha,
             })
         }
     }
@@ -108,23 +118,10 @@ impl CSC {
             let tx_c = tx.clone();
             let pi_c = Arc::clone(&pi_shared);
             let columns_c = Arc::clone(&columns);
+            let alpha = *&self.alpha;
 
             pool.push(thread::spawn(move || {
-                let mut local_vec = vec![0.0; end - start];
-
-                for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
-                    if let Some(column) = opt {
-                        let mut local = 0.0;
-
-                        for &value in column.rows.iter() {
-                            local += pi_c[value.0] * value.1;
-                        }
-                        local_vec[col_idx] = local;
-                    }
-                }
-                tx_c.send((chunk_id, local_vec))
-                    .map_err(|_| "Send error".to_string())?;
-                Ok(())
+                compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end)
             }));
         }
 
@@ -138,7 +135,12 @@ impl CSC {
             result[chunk_id] = chunk;
         }
 
-        Ok(result.into_iter().flatten().collect())
+        Ok(result
+            .into_iter()
+            .flatten()
+            .zip(get_surfer(self.alpha, self.shape.rows(), pi, &self.f[..]))
+            .map(|(x, y)| x + y)
+            .collect())
     }
 
     pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), ()> {
@@ -163,26 +165,44 @@ impl CSC {
             step += 1;
         }
 
-        Ok((pi_even, step))
+        Ok((pi_even, step * 2))
     }
 }
 
-#[test]
-fn test() {
-    // Création de quelques colonnes avec des listes chaînées
-    let mut entries0 = LinkedList::new();
-    entries0.push_back(Value(1, 3.14));
-    entries0.push_back(Value(5, 2.71));
+fn compute_mult(
+    tx_c: Sender<(usize, Vec<f64>)>,
+    pi_c: Arc<Vec<f64>>,
+    columns_c: Arc<Vec<Option<RefCol>>>,
+    alpha: f64,
+    chunk_id: usize,
+    start: usize,
+    end: usize,
+) -> Result<(), String> {
+    let mut local_vec = vec![0.0; end - start];
 
-    let mut entries1 = LinkedList::new();
-    entries1.push_back(Value(0, 1.41));
-    entries1.push_back(Value(2, 1.73));
+    for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
+        if let Some(column) = opt {
+            let mut local = 0.0;
+            for &value in column.rows.iter() {
+                local += alpha * pi_c[value.0] * value.1;
+            }
+            local_vec[col_idx] = local;
+        }
+    }
+    tx_c.send((chunk_id, local_vec))
+        .map_err(|_| "Send error".to_string())?;
+    Ok(())
+}
 
-    let columns = vec![Some(entries0), Some(entries1), None];
+fn get_surfer(alpha: f64, rows: u64, pi: &[f64], f: &[f64]) -> Vec<f64> {
+    let coef = (1f64 - alpha) * (1f64 / rows as f64)
+        + alpha * (1f64 / rows as f64) * pi.iter().zip(f.iter()).map(|(x, y)| x * y).sum::<f64>();
+    vec![coef; rows as usize]
+}
 
-    let shape = Shape::new(6, 3);
-    let matrix = CSC::from(shape, columns).unwrap();
-
-    let vector: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-    println!("{:#?}", matrix.mult_vec(&vector));
+fn get_f(row_count: Vec<u64>) -> Vec<f64> {
+    row_count
+        .iter()
+        .map(|x| if *x == 0u64 { 1f64 } else { 0f64 })
+        .collect()
 }
