@@ -176,7 +176,7 @@ pub fn market_parser(
                 .expect("Failed to execute job");
             }
 
-            pool.shutdown(Duration::from_secs(10))
+            pool.shutdown(Duration::from_secs(2))
                 .map_err(|e| ParseErr::Thread(format!("Pool error : {:?}", e)))?;
             drop(tx);
 

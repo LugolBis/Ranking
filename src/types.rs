@@ -23,6 +23,13 @@ pub enum CSCErr {
     Shape(usize, usize),
 }
 
+#[derive(Debug, Clone)]
+pub enum CLIErr {
+    Alpha(String),
+    Epsilon(String),
+    File(String),
+}
+
 impl Shape {
     pub fn new(rows: u64, columns: u64) -> Shape {
         Shape { rows, columns }

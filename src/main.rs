@@ -1,25 +1,43 @@
 use ranking::parser::{api::parse_file, market::market_parser};
-use ranking::utils::load_env;
+use ranking::utils::{load_env, parse_args};
 use std::path::PathBuf;
 
-const ALPHA: f64 = 0.85;
-const EPSILON: f64 = 1e-6;
-
-fn main() {
-    if !load_env() {
-        println!("Failed to load '.env' file.");
-        return;
-    }
-
-    let path = std::env::var("MATRIX_PATH").unwrap();
-    let m = parse_file(PathBuf::from(path), market_parser, ALPHA);
-    match m {
-        Ok(matrix) => {
-            if let Ok((vec, steps)) = matrix.stationary_distribution(EPSILON) {
+fn compute_csc(alpha: f64, epsilon: f64, path: PathBuf) {
+    match parse_file(PathBuf::from(path), market_parser, alpha) {
+        Ok(matrix) => match matrix.stationary_distribution(epsilon) {
+            Ok((vec, steps)) => {
                 println!("Sum of distribution = {:?}", vec.iter().sum::<f64>());
                 println!("Step : {}", steps);
-            };
+            }
+            Err(e) => eprintln!("{:?}", e),
+        },
+        Err(e) => eprintln!("{:?}", e),
+    }
+}
+
+fn main() {
+    match parse_args() {
+        Ok((alpha, epsilon, opt_path)) => {
+            if let Some(path) = opt_path {
+                compute_csc(alpha, epsilon, path);
+            } else {
+                if !load_env() {
+                    eprintln!(
+                        "Failed to load `.env` file, who need to be at the root of the project."
+                    );
+                } else {
+                    match std::env::var("MATRIX_PATH") {
+                        Ok(path) => {
+                            compute_csc(alpha, epsilon, PathBuf::from(path));
+                        }
+                        Err(e) => eprintln!(
+                            "Failed to get the environment variable `MATRIX_PATH` : {}",
+                            e
+                        ),
+                    }
+                }
+            }
         }
-        Err(mess) => println!("{:?}", mess),
+        Err(e) => eprintln!("{:?}", e),
     }
 }
