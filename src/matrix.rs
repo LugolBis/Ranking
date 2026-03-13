@@ -65,7 +65,7 @@ impl CSC {
         None
     }
 
-    pub fn mult_vec(&self, pi: &[f64]) -> Result<Vec<f64>, CSCErr> {
+    pub fn mult_vec(&self, pi: &[f64], csx: f64, csy: f64) -> Result<Vec<f64>, CSCErr> {
         let rows_len = self.shape.rows() as usize;
 
         if rows_len != pi.len() {
@@ -98,11 +98,12 @@ impl CSC {
             let columns_c = Arc::clone(&columns);
             let alpha = *&self.alpha;
 
-            pool.execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end));
+            pool.execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end))
+                .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
         }
 
         pool.shutdown(Duration::from_secs(2))
-            .map_err(|e| CSCErr::Thread(format!("ThreadPool error : {:?}", e)))?;
+            .map_err(|e| CSCErr::Thread(format!("ThreadPool error : {}", e)))?;
         drop(tx);
 
         let mut result = vec![Vec::new(); nb_threads * 2];
@@ -113,7 +114,7 @@ impl CSC {
         Ok(result
             .into_iter()
             .flatten()
-            .zip(get_surfer(self.alpha, self.shape.rows(), pi, &self.f[..]))
+            .zip(get_surfer(csx, csy, self.shape.rows(), pi, &self.f[..]))
             .map(|(x, y)| x + y)
             .collect())
     }
@@ -125,13 +126,17 @@ impl CSC {
 
         let mut pi_even = uniform_vector(self.shape.rows() as usize);
         let mut pi_odd = pi_even.clone();
+        let n = 1f64 / self.shape.rows() as f64;
+        let csx = (1f64 - &self.alpha) * n;
+        let csy = &self.alpha * n;
+
         let mut step = 0usize;
         let mut need_check = false;
         let mut norm = 1.0;
 
         while norm > epsilon {
-            pi_odd = self.mult_vec(&pi_even)?;
-            pi_even = self.mult_vec(&pi_odd)?;
+            pi_odd = self.mult_vec(&pi_even, csx, csy)?;
+            pi_even = self.mult_vec(&pi_odd, csx, csy)?;
 
             if need_check {
                 norm = compute_norm(&pi_even, &pi_odd);
@@ -171,9 +176,11 @@ fn compute_mult(
     Ok(())
 }
 
-fn get_surfer(alpha: f64, rows: u64, pi: &[f64], f: &[f64]) -> Vec<f64> {
-    let coef = (1f64 - alpha) * (1f64 / rows as f64)
-        + alpha * (1f64 / rows as f64) * pi.iter().zip(f.iter()).map(|(x, y)| x * y).sum::<f64>();
+/// surfer_coef = (1-alpha) * (1/N) + alpha * (1/N) * (pi * f^t)
+///             = csx + csy * (pi * f^t)
+/// Donc csx = (1-alpha) * (1/N) et csy = alpha * (1/N)
+fn get_surfer(csx: f64, csy: f64, rows: u64, pi: &[f64], f: &[f64]) -> Vec<f64> {
+    let coef = csx + csy * pi.iter().zip(f.iter()).map(|(x, y)| x * y).sum::<f64>();
     vec![coef; rows as usize]
 }
 

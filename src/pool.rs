@@ -127,10 +127,15 @@ impl ThreadPool {
 
         // Signal there is a new job is available
         let (lock, cvar) = &*self.job_signal;
-        let mut job_available = lock.lock().unwrap();
-        *job_available = true;
-        cvar.notify_all();
-        Ok(())
+        if let Ok(mut job_available) = lock.lock() {
+            *job_available = true;
+            cvar.notify_all();
+            Ok(())
+        } else {
+            Err(ThreadPoolErr::JobSignal(
+                "Failed to acquire the job signal lock".into(),
+            ))
+        }
     }
 
     pub fn shutdown(&mut self, timeout: Duration) -> Result<(), ThreadPoolErr> {
