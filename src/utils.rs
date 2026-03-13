@@ -1,6 +1,10 @@
+use crate::{
+    errors::{CLIErr, CSCErr},
+    matrix::CSC,
+};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::{fs, path::PathBuf};
-
-use crate::errors::CLIErr;
 
 /// Absolute path to the .env file (demined at compile time)
 const ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.env");
@@ -57,4 +61,39 @@ fn parse_and_set_env(content: &str) {
         }
         // Lines without '=' are skiped
     }
+}
+
+pub fn dump_matrix(matrix: CSC, output_path: PathBuf) -> Result<(), CSCErr> {
+    let file = File::create(&output_path)
+        .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, output_path.display())))?;
+
+    let mut buffer = BufWriter::new(file);
+    buffer
+        .write_all("%%MatrixMarket matrix coordinate pattern general\n".as_bytes())
+        .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
+
+    let shape = matrix.get_shape();
+    buffer
+        .write_all(&format!("{} {}\n", shape.rows(), shape.columns()).into_bytes())
+        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
+
+    let mut iterator = matrix.get_columns().iter().enumerate();
+
+    while let Some((col_idx, opt_col)) = iterator.next() {
+        if let Some(column) = opt_col {
+            for value in column.rows.iter() {
+                writeln!(buffer, "{} {}", value.get_row_index() + 1, col_idx + 1).map_err(|e| {
+                    CSCErr::Dump(format!(
+                        "Failed to write the value {} at row={} column={} due to {}",
+                        value.get_value(),
+                        value.get_row_index(),
+                        col_idx,
+                        e
+                    ))
+                })?;
+            }
+        }
+    }
+
+    Ok(())
 }
