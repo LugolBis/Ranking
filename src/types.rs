@@ -2,7 +2,10 @@ use std::collections::LinkedList;
 
 /// Represent a value of a column of the matrix. So Value.0 is the row index.
 #[derive(Debug, Clone, Copy)]
-pub struct Value(pub usize, pub f64);
+pub struct Value {
+    value: f64,
+    row_index: usize,
+}
 
 /// Represent the shape of a matrix.
 #[derive(Debug, Clone, Copy)]
@@ -17,13 +20,30 @@ pub struct Column {
     pub rows: LinkedList<Value>,
 }
 
+impl Value {
+    pub fn from(value: f64, row_idx: usize) -> Value {
+        Value {
+            value,
+            row_index: row_idx,
+        }
+    }
+
+    pub fn get_value(&self) -> f64 {
+        self.value
+    }
+
+    pub fn get_row_index(&self) -> usize {
+        self.row_index
+    }
+}
+
 impl Shape {
     pub fn new(rows: u64, columns: u64) -> Shape {
         Shape { rows, columns }
     }
 
     /// Construct a Shape from a line.
-    pub fn from(
+    pub fn parse(
         line: Option<String>,
         pattern: &str,
         row_idx: usize,
@@ -62,6 +82,6 @@ impl Column {
 
     /// Return the value at the given index.
     pub fn get_value(&self, row_idx: usize) -> Option<&Value> {
-        self.rows.iter().find(|v| v.0 == row_idx)
+        self.rows.iter().find(|v| v.row_index == row_idx)
     }
 }

@@ -139,7 +139,7 @@ pub fn market_parser(
         Symmetry::General,
     ) = header
     {
-        let shape = Shape::from(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
+        let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
 
         let nb_threads = thread::available_parallelism()
             .map_err(|_| ParseErr::Thread("Failed to get availlable threds.".into()))?

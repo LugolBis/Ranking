@@ -53,21 +53,12 @@ impl CSC {
         }
     }
 
-    pub fn get_column(&self, column_idx: usize) -> Option<RefCol> {
-        if let Some(ref_col) = self.columns.get(column_idx) {
-            ref_col.clone()
-        } else {
-            None
-        }
+    pub fn get_shape(&self) -> Shape {
+        self.shape
     }
 
-    pub fn get_value(&self, row_idx: usize, column_idx: usize) -> Option<Value> {
-        if let Some(column) = self.get_column(column_idx) {
-            if let Some(value) = column.get_value(row_idx) {
-                return Some(value.clone());
-            }
-        }
-        None
+    pub fn get_columns(&self) -> &Vec<Option<RefCol>> {
+        &self.columns
     }
 
     /// Compute the following operation :<br>
@@ -89,7 +80,7 @@ impl CSC {
         let (tx, rx) = unbounded();
 
         let total_len = self.shape.rows() as usize;
-        let chunk_size = (total_len + nb_threads / 2 - 1) / nb_threads / 2;
+        let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns.clone());
         let pi_shared = Arc::new(pi.to_vec());
@@ -177,7 +168,7 @@ fn compute_mult(
         if let Some(column) = opt {
             let mut local = 0.0;
             for &value in column.rows.iter() {
-                local += alpha * pi_c[value.0] * value.1;
+                local += alpha * pi_c[value.get_row_index()] * value.get_value();
             }
             local_vec[col_idx] = local;
         }

@@ -41,10 +41,10 @@ where
     for ps in parsed {
         match &mut values[ps.col_idx] {
             Some(col) => {
-                col.push_back(Value(ps.row_idx, ps.val));
+                col.push_back(Value::from(ps.val, ps.row_idx));
             }
             empty => {
-                *empty = Some(LinkedList::from([Value(ps.row_idx, ps.val)]));
+                *empty = Some(LinkedList::from([Value::from(ps.val, ps.row_idx)]));
             }
         }
     }

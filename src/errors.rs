@@ -30,6 +30,7 @@ pub enum CSCErr {
     SendErr,
     Epsilon(f64),
     ShapeVec(usize, usize),
+    Dump(String),
 }
 
 #[derive(Debug, Clone)]
@@ -98,9 +99,10 @@ impl fmt::Display for CSCErr {
             CSCErr::Epsilon(eps) => write!(f, "Epsilon error : {}", eps),
             CSCErr::ShapeVec(rows, vec_size) => write!(
                 f,
-                "Matrix shape is incompatible with vector size : Matrix rows {}, columnar vector size {}",
+                "Matrix shape is incompatible with vector size : Matrix rows {}, line vector size {}",
                 rows, vec_size
             ),
+            CSCErr::Dump(s) => write!(f, "Failed to dump the matrix due to : {}", s),
         }
     }
 }
