@@ -2,16 +2,17 @@ use ranking::parser::{api::parse_file, market::market_parser};
 use ranking::utils::{load_env, parse_args};
 use std::path::PathBuf;
 
+/// CSC computations.
 fn compute_csc(alpha: f64, epsilon: f64, path: PathBuf) {
     match parse_file(PathBuf::from(path), market_parser, alpha) {
         Ok(matrix) => match matrix.stationary_distribution(epsilon) {
             Ok((vec, steps)) => {
-                println!("Sum of distribution = {:?}", vec.iter().sum::<f64>());
+                println!("Sum of distribution = {}", vec.iter().sum::<f64>());
                 println!("Step : {}", steps);
             }
-            Err(e) => eprintln!("{:?}", e),
+            Err(e) => eprintln!("{}", e),
         },
-        Err(e) => eprintln!("{:?}", e),
+        Err(e) => eprintln!("{}", e),
     }
 }
 
@@ -38,6 +39,6 @@ fn main() {
                 }
             }
         }
-        Err(e) => eprintln!("{:?}", e),
+        Err(e) => eprintln!("{}", e),
     }
 }

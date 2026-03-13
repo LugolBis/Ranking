@@ -1,11 +1,14 @@
 use crate::parser::api::Parsed;
 
+/// Represent the coordinate parsed in the Matrix file
 #[derive(Debug, Clone, Copy)]
 pub struct Coord {
     row_idx: usize,
     column_idx: usize,
 }
 
+/// Represent a parsed part of the Matrix file
+#[derive(Debug)]
 pub struct Chunk {
     id: usize,
     coords: Vec<Coord>,
@@ -38,6 +41,7 @@ impl Chunk {
         &self.row_count
     }
 
+    /// Evenly distribute the probability according to the number of row values
     pub fn into_parsed(&self, row_count: &[u64]) -> Vec<Parsed> {
         self.coords
             .clone()

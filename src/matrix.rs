@@ -9,13 +9,18 @@ use crate::{
     types::{Column, Shape, Value},
 };
 
+/// An immutable thread-safe reference to a `Column`.
 pub type RefCol = Arc<Column>;
 
+/// Represent a Sparse Matrix as a `Compressed Sparse Column`.
 #[derive(Debug, Clone)]
 pub struct CSC {
     shape: Shape,
     columns: Vec<Option<RefCol>>,
-    // f est un vecteur ligne de taille N tel que f [i] = 1 si la ligne i de P ne contient que des zéros et sinon f [i] = 0
+    /// f is a line vector of the same len of rows of the matrix.<br>
+    /// It's constructed as following :<br>
+    /// if the row i in P contains only 0 { f\[i] = 1 }<br>
+    /// else { f\[i] = 0 }
     f: Vec<f64>,
     alpha: f64,
 }
@@ -65,6 +70,9 @@ impl CSC {
         None
     }
 
+    /// Compute the following operation :<br>
+    /// pi * M (with M the matrix `CSC` itself)<br>
+    /// Arguments `csx` and `csy` are coeficients used to compute the random surfer coeficient.
     pub fn mult_vec(&self, pi: &[f64], csx: f64, csy: f64) -> Result<Vec<f64>, CSCErr> {
         let rows_len = self.shape.rows() as usize;
 
@@ -119,13 +127,15 @@ impl CSC {
             .collect())
     }
 
+    /// Compute the stationary distribution with the `epsilon` parameter which define the target precision.<br>
+    /// Note that it use the random surfer and `self.alpha` for computations.
     pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), CSCErr> {
         if 1f64 - (1f64 - epsilon) == 0f64 {
             return Err(CSCErr::Epsilon(epsilon));
         }
 
         let mut pi_even = uniform_vector(self.shape.rows() as usize);
-        let mut pi_odd = pi_even.clone();
+        let mut pi_odd: Vec<f64>;
         let n = 1f64 / self.shape.rows() as f64;
         let csx = (1f64 - &self.alpha) * n;
         let csy = &self.alpha * n;
@@ -151,6 +161,7 @@ impl CSC {
     }
 }
 
+/// Compute the multiplication between `pi` and few columns of the matrix.
 fn compute_mult(
     tx_c: Sender<(usize, Vec<f64>)>,
     pi_c: Arc<Vec<f64>>,
@@ -176,14 +187,16 @@ fn compute_mult(
     Ok(())
 }
 
-/// surfer_coef = (1-alpha) * (1/N) + alpha * (1/N) * (pi * f^t)
-///             = csx + csy * (pi * f^t)
-/// Donc csx = (1-alpha) * (1/N) et csy = alpha * (1/N)
+/// Compute the surfer coeficient :<br>
+/// surfer_coef = (1-alpha) * (1/N) + alpha * (1/N) * (pi * f^t)<br>
+///             = csx + csy * (pi * f^t)<br>
+/// So csx = (1-alpha) * (1/N) et csy = alpha * (1/N)
 fn get_surfer(csx: f64, csy: f64, rows: u64, pi: &[f64], f: &[f64]) -> Vec<f64> {
     let coef = csx + csy * pi.iter().zip(f.iter()).map(|(x, y)| x * y).sum::<f64>();
     vec![coef; rows as usize]
 }
 
+/// Construct the f line vector based on the count of values for each row of the matrix
 fn get_f(row_count: Vec<u64>) -> Vec<f64> {
     row_count
         .iter()

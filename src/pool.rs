@@ -11,6 +11,7 @@ use crossbeam_queue::SegQueue;
 
 use crate::errors::{RefErr, ThreadPoolErr};
 
+/// An abstraction of a thread which can interact with `ThreadPool` to execute `Job`.
 #[derive(Debug)]
 pub struct Worker {
     /// Random ID to distinguish different workers.
@@ -19,11 +20,13 @@ pub struct Worker {
     error: Option<String>,
 }
 
+/// Represent a job that a `Work` need to do.
 pub enum Job {
     Task(Box<dyn FnOnce() -> Result<(), RefErr> + Send + 'static>),
     Shutdown,
 }
 
+/// An abstraction to manage threads with ease.
 #[derive(Debug)]
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -36,6 +39,7 @@ pub struct ThreadPool {
 }
 
 impl Worker {
+    /// This method create and start a Worker who will execute the `Job`s pushed in the `ThreadPool` until `ThreadPool.shutdown()` is called.
     fn new(
         id: usize,
         job_queue: Arc<SegQueue<Job>>,
@@ -90,6 +94,7 @@ impl Worker {
 }
 
 impl ThreadPool {
+    /// Create new thread pool with `size` workers (threads).
     pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
@@ -115,6 +120,7 @@ impl ThreadPool {
         }
     }
 
+    /// Took a closure in input to be executed by a `Worker`.
     pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolErr>
     where
         F: FnOnce() -> Result<(), RefErr> + Send + 'static,
@@ -138,6 +144,7 @@ impl ThreadPool {
         }
     }
 
+    /// Shutdown the thread pool after a given timeout.
     pub fn shutdown(&mut self, timeout: Duration) -> Result<(), ThreadPoolErr> {
         let start = Instant::now();
         // 1 : Signal all workers to stop.

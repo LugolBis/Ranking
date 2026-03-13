@@ -26,6 +26,7 @@ impl Parsed {
     }
 }
 
+/// Provide a generic API to unify matrix file format and their implementation.
 pub fn parse_file<F>(path: PathBuf, fn_parse: F, alpha: f64) -> Result<CSC, ParseErr>
 where
     F: Fn(&mut dyn Iterator<Item = String>) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,

@@ -2,9 +2,10 @@ use std::{fs, path::PathBuf};
 
 use crate::errors::CLIErr;
 
-// Absolute path to the .env file (demined at compile time)
+/// Absolute path to the .env file (demined at compile time)
 const ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.env");
 
+/// Parse the CLI arguments.
 pub fn parse_args() -> Result<(f64, f64, Option<PathBuf>), CLIErr> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let alpha = args
@@ -32,7 +33,7 @@ pub fn load_env() -> bool {
         .is_ok()
 }
 
-// Parse the `.env` file and set them as environnment variables.
+/// Parse the `.env` file and set them as environnment variables.
 fn parse_and_set_env(content: &str) {
     for line in content.lines() {
         let line = line.trim();
