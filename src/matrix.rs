@@ -1,4 +1,12 @@
-use std::{collections::LinkedList, sync::Arc, thread, time::Duration};
+use std::{
+    collections::LinkedList,
+    fs::File,
+    io::{BufWriter, Write},
+    path::PathBuf,
+    sync::Arc,
+    thread,
+    time::Duration,
+};
 
 use crossbeam_channel::{Sender, unbounded};
 
@@ -53,16 +61,16 @@ impl CSC {
         }
     }
 
-    pub fn get_shape(&self) -> Shape {
+    pub fn shape(&self) -> Shape {
         self.shape
     }
 
-    pub fn get_columns(&self) -> &Vec<Option<RefCol>> {
+    pub fn columns(&self) -> &Vec<Option<RefCol>> {
         &self.columns
     }
 
     /// Return the count of non zero value.
-    pub fn get_count(&self) -> u64 {
+    pub fn count(&self) -> u64 {
         self.columns
             .iter()
             .flatten()
@@ -150,7 +158,6 @@ impl CSC {
 
             if need_check {
                 norm = compute_norm(&pi_even, &pi_odd);
-                println!("Step = {} - Norm = {}", step, norm);
             }
 
             need_check = !need_check;
@@ -158,6 +165,49 @@ impl CSC {
         }
 
         Ok((pi_even, step * 2))
+    }
+
+    /// Write the CSC matrix as the Matrix Format in the given `path` file.
+    pub fn dump(&self, path: &PathBuf) -> Result<(), CSCErr> {
+        let file = File::create(&path)
+            .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, path.display())))?;
+
+        let mut buffer = BufWriter::new(file);
+        buffer
+            .write_all("%%MatrixMarket matrix coordinate pattern general\n".as_bytes())
+            .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
+
+        let shape = &self.shape();
+        writeln!(
+            buffer,
+            "{} {} {}",
+            shape.rows(),
+            shape.columns(),
+            &self.count()
+        )
+        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
+
+        let mut iterator = self.columns().iter().enumerate();
+
+        while let Some((col_idx, opt_col)) = iterator.next() {
+            if let Some(column) = opt_col {
+                for value in column.rows.iter() {
+                    writeln!(buffer, "{} {}", value.get_row_index() + 1, col_idx + 1).map_err(
+                        |e| {
+                            CSCErr::Dump(format!(
+                                "Failed to write the value {} at row={} column={} due to {}",
+                                value.get_value(),
+                                value.get_row_index(),
+                                col_idx,
+                                e
+                            ))
+                        },
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
