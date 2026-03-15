@@ -10,23 +10,29 @@ use std::{fs, path::PathBuf};
 const ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.env");
 
 /// Parse the CLI arguments.
-pub fn parse_args() -> Result<(f64, f64, Option<PathBuf>), CLIErr> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+pub fn parse_args() -> Result<(f64, f64, f64, Option<PathBuf>), CLIErr> {
+    let mut args = std::env::args().skip(1);
     let alpha = args
-        .get(0)
+        .next()
         .ok_or(CLIErr::Alpha("Missing first argument : alpha".into()))?
         .parse::<f64>()
         .map_err(|e| CLIErr::Alpha(format!("Failed to parse alpha : {}", e)))?;
     let epsilon = args
-        .get(1)
+        .next()
         .ok_or(CLIErr::Epsilon("Missing second argument : epsilon".into()))?
         .parse::<f64>()
         .map_err(|e| CLIErr::Epsilon(format!("Failed to parse epsilon : {}", e)))?;
+    let treshold = args
+        .next()
+        .ok_or(CLIErr::Treshold("Missing third argument : treshold".into()))?
+        .parse::<f64>()
+        .map_err(|e| CLIErr::Treshold(format!("Failed to parse treshold : {}", e)))?;
 
     Ok((
         alpha,
         epsilon,
-        args.get(2).and_then(|val| Some(PathBuf::from(val))),
+        treshold,
+        args.next().and_then(|val| Some(PathBuf::from(val))),
     ))
 }
 
@@ -63,6 +69,7 @@ fn parse_and_set_env(content: &str) {
     }
 }
 
+/// Write the CSC matrix as the Matrix Format in the given `output_path` file.
 pub fn dump_matrix(matrix: CSC, output_path: PathBuf) -> Result<(), CSCErr> {
     let file = File::create(&output_path)
         .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, output_path.display())))?;

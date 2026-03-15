@@ -37,6 +37,7 @@ pub enum CSCErr {
 pub enum CLIErr {
     Alpha(String),
     Epsilon(String),
+    Treshold(String),
     File(String),
 }
 
@@ -112,6 +113,7 @@ impl fmt::Display for CLIErr {
         match self {
             CLIErr::Alpha(s) => write!(f, "{}", s),
             CLIErr::Epsilon(s) => write!(f, "{}", s),
+            CLIErr::Treshold(s) => write!(f, "{}", s),
             CLIErr::File(s) => write!(f, "File error : [{}]", s),
         }
     }

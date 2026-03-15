@@ -3,8 +3,8 @@ use ranking::utils::{dump_matrix, load_env, parse_args};
 use std::path::PathBuf;
 
 /// CSC computations.
-fn compute_csc(alpha: f64, epsilon: f64, path: PathBuf) {
-    match parse_file(PathBuf::from(path), market_parser, alpha) {
+fn compute_csc(alpha: f64, epsilon: f64, treashold: f64, path: PathBuf) {
+    match parse_file(PathBuf::from(path), market_parser, alpha, treashold) {
         Ok(matrix) => match matrix.stationary_distribution(epsilon) {
             Ok((vec, steps)) => {
                 println!("Sum of distribution = {}", vec.iter().sum::<f64>());
@@ -22,7 +22,7 @@ fn compute_csc(alpha: f64, epsilon: f64, path: PathBuf) {
 
 fn main() {
     match parse_args() {
-        Ok((alpha, epsilon, opt_path)) => {
+        Ok((alpha, epsilon, treshold, opt_path)) => {
             if let Some(path) = opt_path {
                 compute_csc(alpha, epsilon, path);
             } else {
