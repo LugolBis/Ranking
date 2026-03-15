@@ -61,6 +61,15 @@ impl CSC {
         &self.columns
     }
 
+    /// Return the count of non zero value.
+    pub fn get_count(&self) -> u64 {
+        self.columns
+            .iter()
+            .flatten()
+            .map(|c| c.rows.len() as u64)
+            .sum::<u64>()
+    }
+
     /// Compute the following operation :<br>
     /// pi * M (with M the matrix `CSC` itself)<br>
     /// Arguments `csx` and `csy` are coeficients used to compute the random surfer coeficient.

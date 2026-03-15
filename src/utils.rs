@@ -73,9 +73,14 @@ pub fn dump_matrix(matrix: CSC, output_path: PathBuf) -> Result<(), CSCErr> {
         .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
 
     let shape = matrix.get_shape();
-    buffer
-        .write_all(&format!("{} {}\n", shape.rows(), shape.columns()).into_bytes())
-        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
+    writeln!(
+        buffer,
+        "{} {} {}",
+        shape.rows(),
+        shape.columns(),
+        matrix.get_count()
+    )
+    .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
 
     let mut iterator = matrix.get_columns().iter().enumerate();
 
