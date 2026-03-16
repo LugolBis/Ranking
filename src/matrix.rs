@@ -78,6 +78,10 @@ impl CSC {
             .sum::<u64>()
     }
 
+    pub fn set_alpha(&mut self, alpha: f64) {
+        self.alpha = alpha;
+    }
+
     /// Compute the following operation :<br>
     /// pi * M (with M the matrix `CSC` itself)<br>
     /// Arguments `csx` and `csy` are coeficients used to compute the random surfer coeficient.
