@@ -42,6 +42,7 @@ pub enum CLIErr {
     OutputDir(String),
     EnvPath(String),
     Unknown(String),
+    Chart(String),
 }
 
 impl std::error::Error for ParseErr {}
@@ -121,6 +122,7 @@ impl fmt::Display for CLIErr {
             CLIErr::OutputDir(s) => write!(f, "Output dir path error : [{}]", s),
             CLIErr::EnvPath(s) => write!(f, "Environment path error : [{}]", s),
             CLIErr::Unknown(s) => write!(f, "Unknown argument : [{}]", s),
+            CLIErr::Chart(s) => write!(f, "Chart issue : [{}]", s),
         }
     }
 }

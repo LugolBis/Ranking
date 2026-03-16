@@ -8,7 +8,7 @@ use crate::parser::{api::parse_file, market::market_parser};
 
 const HEADER: &str = "alpha;percent_of_edges_removed;stationnary_distrib_converge_time";
 const ALPHA_STEP: f64 = 0.01f64;
-const TRESHOLD_STEP: f64 = 0.005f64;
+const TRESHOLD_STEP: f64 = 0.01f64;
 
 /// What do we simulate ?<br>
 /// We simulate the evolution of stationary distribution convergence time according to the parameters `alpha` and
@@ -34,7 +34,8 @@ pub fn simulation(
     matrix_path: &PathBuf,
     output_dir: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::create(&output_dir.join("results.csv"))?;
+    let data_path = output_dir.join("results.csv");
+    let file = File::create(&data_path)?;
 
     let mut buffer = BufWriter::new(file);
     writeln!(buffer, "{}", HEADER)?;
@@ -83,6 +84,7 @@ pub fn simulation(
         prev_tresh = treshold;
     }
 
+    println!();
     Ok(())
 }
 
