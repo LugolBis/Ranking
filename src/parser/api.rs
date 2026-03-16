@@ -40,7 +40,8 @@ where
         f64,
     ) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,
 {
-    let file = File::open(path).map_err(|e| ParseErr::File(e.to_string()))?;
+    let file = File::open(path)
+        .map_err(|e| ParseErr::File(format!("{} for the path `{}`", e, path.display())))?;
     let mut buffer = BufReader::new(file).lines().flatten();
 
     let (shape, parsed, row_count) = fn_parse(&mut buffer, treshold)?;

@@ -1,5 +1,6 @@
 use crate::errors::CLIErr;
 use crate::parser::{api::parse_file, market::market_parser};
+use crate::simulation::simulation;
 use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone)]
@@ -154,8 +155,18 @@ impl CLI {
                         Err(e) => eprintln!("{}", e),
                     }
                 } else {
-                    // TODO: Implement simulate feature
-                    eprintln!("Simulate feature isn't yet implemented.");
+                    println!("");
+                    if let Err(e) = simulation(
+                        cli.alpha,
+                        cli.epsilon,
+                        cli.treshold,
+                        &cli.matrix_path,
+                        &cli.output_dir,
+                    ) {
+                        eprintln!("Simulation failed due to : [{}]", e);
+                    } else {
+                        println!("Successfully run the simulation.");
+                    }
                 }
             }
             Err(err) => eprintln!("{}", err),
