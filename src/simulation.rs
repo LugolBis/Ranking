@@ -6,9 +6,26 @@ use std::{
 
 use crate::parser::{api::parse_file, market::market_parser};
 
-const HEADER: &str = "alpha;arc_removed;stationnary_distrib_converge_time";
+const HEADER: &str = "alpha;percent_of_edges_removed;stationnary_distrib_converge_time";
 const ALPHA_STEP: f64 = 0.01f64;
 const TRESHOLD_STEP: f64 = 0.005f64;
+
+/// What do we simulate ?<br>
+/// We simulate the evolution of stationary distribution convergence time according to the parameters `alpha` and
+///  `treshold` who's the percent of edges removed.
+///  To minimize I/O cost we load a matrix for a given `treshold` and compute the stationary distribution for all the `alpha`.<br><br>
+/// Moreover the simulation follow a geometric sequence `u_n+1` = `matrix(u_n)` - `q` for `n` >= `2`, where `u_0` is the original matrix
+/// without any edges removed and `u_1` is the original matrix with exactly (`TRESHOLD_STEP * 100`)% of it's edges removed.
+///  With `q` = (`treshold_n` - `treshold_{n-1}`) / (`1.0` - `treshold_{n-1}`).<br><br>
+/// These first two terms (`u_0` and `u_1`) are computed by the `simulation.init()` function who only write the matrix `u_1`
+///  (required to compute the following terms).
+/// After that we compute the `u_2` to `u_n` (where `n` = `treshol_lim` / `TRESHOLD_STEP`) and write each term (matrix).<br><br>
+/// That mean the process of removing edges had memory, for example we simulate with `alpha_lim` = `ALPHA_STEP` and
+///  `treshold_lim` = `0.010`. So we want here to remove `1%` of the edges. So we have the following execution :<br>
+/// -> `u_0` -> Original matrix<br>
+/// -> `u_1` -> Original matrix - `0.5%` (treshold=0.005) of the edges<br>
+/// -> `u_2` -> `u_1` - `q`, with `q` = (`0.01` - `0.005`) / (`1.0` - `0.005`)<br>
+/// So `u_2` is the Original matrix - `1%` of edges removed.
 
 pub fn simulation(
     alpha_lim: f64,
@@ -69,7 +86,8 @@ pub fn simulation(
     Ok(())
 }
 
-// Compute and save the first two iterations
+// Compute and save the first two iterations.
+// These first two iterations permite to initialiase the
 fn init(
     alpha_steps: usize,
     epsilon: f64,
