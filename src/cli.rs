@@ -30,6 +30,21 @@ const HELP: &str = r#"
         --simulate, -s : Simulate the evolution of the stationary distribution convergence according to `alpha` and `treshold`.
 "#;
 
+impl Default for CLI {
+    // A default implementation used for display the help message.
+    fn default() -> Self {
+        CLI {
+            alpha: 0f64,
+            epsilon: 0f64,
+            treshold: 0f64,
+            matrix_path: PathBuf::new(),
+            output_dir: PathBuf::new(),
+            help: true,
+            simulate: false,
+        }
+    }
+}
+
 impl CLI {
     /// Parse the CLI arguments.
     fn try_new() -> Result<CLI, CLIErr> {
@@ -117,6 +132,9 @@ impl CLI {
             }
         }
 
+        if help {
+            return Ok(CLI::default());
+        }
         load_env(&mut matrix_path, &mut output_dir, env_path)?;
 
         Ok(CLI {
