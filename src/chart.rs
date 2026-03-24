@@ -59,7 +59,7 @@ pub fn generate(data_path: &PathBuf, chart_path: &PathBuf) -> Result<(), Box<dyn
     let time_max = time_max + 0.02 * time_range;
 
     // Draw creation
-    let root = BitMapBackend::new(chart_path, (800, 600)).into_drawing_area();
+    let root = BitMapBackend::new(chart_path, (1920, 1080)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)

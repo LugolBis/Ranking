@@ -36,11 +36,9 @@ pub enum CSCErr {
 #[derive(Debug, Clone)]
 pub enum CLIErr {
     Alpha(String),
+    Config(String),
     Epsilon(String),
     Treshold(String),
-    MatrixPath(String),
-    OutputDir(String),
-    EnvPath(String),
     Unknown(String),
     Chart(String),
 }
@@ -116,11 +114,9 @@ impl fmt::Display for CLIErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CLIErr::Alpha(s) => write!(f, "{}", s),
+            CLIErr::Config(s) => write!(f, "{}", s),
             CLIErr::Epsilon(s) => write!(f, "{}", s),
             CLIErr::Treshold(s) => write!(f, "{}", s),
-            CLIErr::MatrixPath(s) => write!(f, "Matrix file path error : [{}]", s),
-            CLIErr::OutputDir(s) => write!(f, "Output dir path error : [{}]", s),
-            CLIErr::EnvPath(s) => write!(f, "Environment path error : [{}]", s),
             CLIErr::Unknown(s) => write!(f, "Unknown argument : [{}]", s),
             CLIErr::Chart(s) => write!(f, "Chart issue : [{}]", s),
         }
