@@ -46,7 +46,7 @@ pub fn filter_edges(
     let mut local_cols = vec![None; end - start];
     let mut local_rows_count = vec![0u64; end - start];
 
-    for (col_idx, opt) in columns_c.iter().enumerate() {
+    for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
         if let Some(column) = opt {
             let column_filtered = column
                 .rows

@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, sync::Arc, thread, time::Duration};
+use std::{collections::LinkedList, sync::Arc, thread};
 
 use crossbeam_channel::unbounded;
 
