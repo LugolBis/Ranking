@@ -15,7 +15,11 @@ struct Record {
     time: f64,
 }
 
-pub fn generate(data_path: &PathBuf, chart_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn generate(
+    data_path: &PathBuf,
+    chart_path: &PathBuf,
+    epsilon: f64,
+) -> Result<(), Box<dyn Error>> {
     // Read the CSV file
     let mut data_per_edge: HashMap<u64, Vec<(f64, f64)>> = HashMap::new();
 
@@ -59,12 +63,15 @@ pub fn generate(data_path: &PathBuf, chart_path: &PathBuf) -> Result<(), Box<dyn
     let time_max = time_max + 0.02 * time_range;
 
     // Draw creation
-    let root = BitMapBackend::new(chart_path, (1920, 1080)).into_drawing_area();
+    let root = BitMapBackend::new(chart_path, (1920, 1200)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
         .caption(
-            "Stationary distribution converging time according to alpha",
+            format!(
+                "Stationary distribution converging time according to alpha with epsilon = {:+e}",
+                epsilon
+            ),
             ("sans-serif", 25),
         )
         .margin(10)
@@ -113,6 +120,7 @@ pub fn generate(data_path: &PathBuf, chart_path: &PathBuf) -> Result<(), Box<dyn
         .configure_series_labels()
         .background_style(WHITE.mix(0.8))
         .border_style(BLACK)
+        .position(SeriesLabelPosition::UpperLeft)
         .draw()?;
 
     println!(

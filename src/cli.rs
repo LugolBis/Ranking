@@ -1,7 +1,7 @@
 use crate::chart::generate;
 use crate::errors::CLIErr;
 use crate::parser::{api::parse_file, market::market_parser};
-use crate::simulation::{Alpha, Treshold, simulation};
+use crate::simulation::{Alpha, Threshold, simulation};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ pub struct CLI {
     #[serde(default)]
     alpha: Alpha,
     #[serde(default)]
-    treshold: Treshold,
+    treshold: Threshold,
     epsilon: f64,
     matrix_path: PathBuf,
     output_dir: PathBuf,
@@ -53,7 +53,7 @@ impl Default for CLI {
     fn default() -> Self {
         CLI {
             alpha: Alpha::default(),
-            treshold: Treshold::default(),
+            treshold: Threshold::default(),
             epsilon: 0f64,
             matrix_path: PathBuf::new(),
             output_dir: PathBuf::new(),
@@ -168,6 +168,7 @@ impl CLI {
                         if let Err(e) = generate(
                             &cli.output_dir.join("results.csv"),
                             &cli.output_dir.join("chart.png"),
+                            cli.epsilon,
                         ) {
                             eprintln!("{}", e);
                         };
