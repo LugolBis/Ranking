@@ -138,7 +138,7 @@ impl CLI {
                 }
 
                 if !cli.simulate {
-                    match parse_file(&cli.matrix_path, market_parser, cli.alpha.end(), 0f64) {
+                    match parse_file(&cli.matrix_path, market_parser, cli.alpha.end()) {
                         Ok(matrix) => match matrix.stationary_distribution(cli.epsilon) {
                             Ok((vec, steps)) => {
                                 println!("Sum of distribution = {}", vec.iter().sum::<f64>());

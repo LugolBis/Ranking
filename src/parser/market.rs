@@ -4,7 +4,6 @@ use crossbeam_channel::unbounded;
 
 use crate::{
     errors::{ParseErr, RefErr},
-    maths::random,
     parser::{
         api::Parsed,
         chunk::{Chunk, Coord},
@@ -17,7 +16,6 @@ use crate::{
 /// Parse a Matrix Market file.
 pub fn market_parser(
     iterator: &mut dyn Iterator<Item = String>,
-    treshold: f64,
 ) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr> {
     let header = iterator.next().try_into()?;
 
@@ -38,12 +36,7 @@ pub fn market_parser(
         let mut pool = ThreadPool::new(nb_threads);
         let (tx, rx) = unbounded::<Result<Chunk, ParseErr>>();
 
-        let lines = Arc::new(
-            iterator
-                .filter(|_| random() >= treshold)
-                .enumerate()
-                .collect::<Vec<(usize, String)>>(),
-        );
+        let lines = Arc::new(iterator.enumerate().collect::<Vec<(usize, String)>>());
         let total_len = lines.len();
         let chunk_size = (total_len + nb_threads - 1) / nb_threads;
 

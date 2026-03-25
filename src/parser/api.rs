@@ -28,23 +28,15 @@ impl Parsed {
 
 /// Provide a generic API to unify matrix file format and their implementation.
 /// The treshold permit to controll the percent of edges who will be removed, to remove 20% the treashold need to be 0.2 for example.
-pub fn parse_file<F>(
-    path: &PathBuf,
-    fn_parse: F,
-    alpha: f64,
-    treshold: f64,
-) -> Result<CSC, ParseErr>
+pub fn parse_file<F>(path: &PathBuf, fn_parse: F, alpha: f64) -> Result<CSC, ParseErr>
 where
-    F: Fn(
-        &mut dyn Iterator<Item = String>,
-        f64,
-    ) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,
+    F: Fn(&mut dyn Iterator<Item = String>) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,
 {
     let file = File::open(path)
         .map_err(|e| ParseErr::File(format!("{} for the path `{}`", e, path.display())))?;
     let mut buffer = BufReader::new(file).lines().flatten();
 
-    let (shape, parsed, row_count) = fn_parse(&mut buffer, treshold)?;
+    let (shape, parsed, row_count) = fn_parse(&mut buffer)?;
     let mut values: Vec<Option<LinkedList<Value>>> = vec![None; shape.columns() as usize];
 
     // We supposed that the parsed values are sorted by rows.
