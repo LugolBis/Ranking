@@ -1,27 +1,20 @@
-use std::{
-    collections::LinkedList,
-    fs::File,
-    io::{BufWriter, Write},
-    path::PathBuf,
-    sync::Arc,
-    thread,
-    time::Duration,
-};
+use std::{collections::LinkedList, sync::Arc, thread, time::Duration};
 
-use crossbeam_channel::{Sender, unbounded};
+use crossbeam_channel::unbounded;
 
 use crate::{
-    errors::{CSCErr, RefErr},
+    errors::CSCErr,
     maths::{compute_norm, uniform_vector},
+    matrix::types::{Column, Shape, Value},
+    matrix::utils::{compute_mult, get_f, get_surfer},
     pool::ThreadPool,
-    types::{Column, Shape, Value},
 };
 
 /// An immutable thread-safe reference to a `Column`.
 pub type RefCol = Arc<Column>;
 
 /// Represent a Sparse Matrix as a `Compressed Sparse Column`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CSC {
     shape: Shape,
     columns: Vec<Option<RefCol>>,
@@ -31,6 +24,8 @@ pub struct CSC {
     /// else { f\[i] = 0 }
     f: Vec<f64>,
     alpha: f64,
+    /// Thread pool used to parallelize operations
+    pool: Arc<ThreadPool>,
 }
 
 impl CSC {
@@ -40,6 +35,13 @@ impl CSC {
         row_count: Vec<u64>,
         alpha: f64,
     ) -> Result<CSC, CSCErr> {
+        let nb_threads = thread::available_parallelism()
+            .map_err(|_| {
+                CSCErr::Thread("Failed to get the number of availlable parallelism.".into())
+            })?
+            .get();
+        let pool: ThreadPool = ThreadPool::new(nb_threads);
+
         if shape.columns() as usize != columns.len() {
             Err(CSCErr::ShapeColumn(shape, columns.len()))
         } else {
@@ -57,6 +59,7 @@ impl CSC {
                     .collect(),
                 f: get_f(row_count),
                 alpha,
+                pool: Arc::new(pool),
             })
         }
     }
@@ -67,6 +70,14 @@ impl CSC {
 
     pub fn columns(&self) -> &Vec<Option<RefCol>> {
         &self.columns
+    }
+
+    pub fn alpha(&self) -> f64 {
+        self.alpha
+    }
+
+    pub fn pool(&self) -> Arc<ThreadPool> {
+        Arc::clone(&self.pool)
     }
 
     /// Return the count of non zero value.
@@ -92,12 +103,7 @@ impl CSC {
             return Err(CSCErr::ShapeVec(rows_len, pi.len()));
         }
 
-        let nb_threads = thread::available_parallelism()
-            .map_err(|_| {
-                CSCErr::Thread("Failed to get the number of availlable parallelisme.".into())
-            })?
-            .get();
-        let mut pool: ThreadPool = ThreadPool::new(nb_threads);
+        let nb_threads = &self.pool.num_workers();
         let (tx, rx) = unbounded();
 
         let total_len = self.shape.rows() as usize;
@@ -118,12 +124,11 @@ impl CSC {
             let columns_c = Arc::clone(&columns);
             let alpha = *&self.alpha;
 
-            pool.execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end))
+            let _ = &self
+                .pool
+                .execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end))
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
         }
-
-        pool.shutdown(Duration::from_secs(2))
-            .map_err(|e| CSCErr::Thread(format!("ThreadPool error : {}", e)))?;
         drop(tx);
 
         let mut result = vec![Vec::new(); nb_threads * 2];
@@ -170,90 +175,4 @@ impl CSC {
 
         Ok((pi_even, step * 2))
     }
-
-    /// Write the CSC matrix as the Matrix Format in the given `path` file.
-    pub fn dump(&self, path: &PathBuf) -> Result<(), CSCErr> {
-        let file = File::create(&path)
-            .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, path.display())))?;
-
-        let mut buffer = BufWriter::new(file);
-        buffer
-            .write_all("%%MatrixMarket matrix coordinate pattern general\n".as_bytes())
-            .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
-
-        let shape = &self.shape();
-        writeln!(
-            buffer,
-            "{} {} {}",
-            shape.rows(),
-            shape.columns(),
-            &self.count()
-        )
-        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
-
-        let mut iterator = self.columns().iter().enumerate();
-
-        while let Some((col_idx, opt_col)) = iterator.next() {
-            if let Some(column) = opt_col {
-                for value in column.rows.iter() {
-                    writeln!(buffer, "{} {}", value.get_row_index() + 1, col_idx + 1).map_err(
-                        |e| {
-                            CSCErr::Dump(format!(
-                                "Failed to write the value {} at row={} column={} due to {}",
-                                value.get_value(),
-                                value.get_row_index(),
-                                col_idx,
-                                e
-                            ))
-                        },
-                    )?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
-/// Compute the multiplication between `pi` and few columns of the matrix.
-fn compute_mult(
-    tx_c: Sender<(usize, Vec<f64>)>,
-    pi_c: Arc<Vec<f64>>,
-    columns_c: Arc<Vec<Option<RefCol>>>,
-    alpha: f64,
-    chunk_id: usize,
-    start: usize,
-    end: usize,
-) -> Result<(), RefErr> {
-    let mut local_vec = vec![0.0; end - start];
-
-    for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
-        if let Some(column) = opt {
-            let mut local = 0.0;
-            for &value in column.rows.iter() {
-                local += alpha * pi_c[value.get_row_index()] * value.get_value();
-            }
-            local_vec[col_idx] = local;
-        }
-    }
-    tx_c.send((chunk_id, local_vec))
-        .map_err(|_| Box::new(CSCErr::SendErr) as RefErr)?;
-    Ok(())
-}
-
-/// Compute the surfer coeficient :<br>
-/// surfer_coef = (1-alpha) * (1/N) + alpha * (1/N) * (pi * f^t)<br>
-///             = csx + csy * (pi * f^t)<br>
-/// So csx = (1-alpha) * (1/N) et csy = alpha * (1/N)
-fn get_surfer(csx: f64, csy: f64, rows: u64, pi: &[f64], f: &[f64]) -> Vec<f64> {
-    let coef = csx + csy * pi.iter().zip(f.iter()).map(|(x, y)| x * y).sum::<f64>();
-    vec![coef; rows as usize]
-}
-
-/// Construct the f line vector based on the count of values for each row of the matrix
-fn get_f(row_count: Vec<u64>) -> Vec<f64> {
-    row_count
-        .iter()
-        .map(|x| if *x == 0u64 { 1f64 } else { 0f64 })
-        .collect()
 }

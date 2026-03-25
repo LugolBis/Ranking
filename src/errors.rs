@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::types::Shape;
+use crate::matrix::types::Shape;
 
 pub type RefErr = Box<dyn std::error::Error + Send + 'static>;
 

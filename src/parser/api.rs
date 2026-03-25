@@ -5,9 +5,9 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 use crate::errors::ParseErr;
-use crate::matrix::CSC;
-use crate::types::Shape;
-use crate::types::Value;
+use crate::matrix::core::CSC;
+use crate::matrix::types::Shape;
+use crate::matrix::types::Value;
 
 #[derive(Debug)]
 pub struct Parsed {

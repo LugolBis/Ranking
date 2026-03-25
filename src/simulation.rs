@@ -134,7 +134,11 @@ pub fn simulation(
 
         // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_tresh`
         let q_tresh = (treshold_current - prev_tresh) / (1f64 - prev_tresh);
-        let mut matrix = parse_file(&path, market_parser, 0f64, q_tresh)?;
+        let mut matrix = parse_file(&path, market_parser, 0f64)?;
+
+        if q_tresh > 0f64 {
+            matrix = matrix.remove_edges(q_tresh)?;
+        }
 
         let mut alpha_current = alpha.start;
         while alpha_current <= alpha.end {
@@ -173,7 +177,11 @@ fn init(
     let mut treshold_current = treshold.start;
 
     while treshold_current <= treshold.step {
-        let mut matrix = parse_file(matrix_path, market_parser, 0f64, treshold_current)?;
+        let mut matrix = parse_file(matrix_path, market_parser, 0f64)?;
+
+        if treshold_current > 0f64 {
+            matrix = matrix.remove_edges(treshold_current)?;
+        }
 
         let mut alpha_current = alpha.start;
         while alpha_current <= alpha.end {

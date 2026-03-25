@@ -120,6 +120,10 @@ impl ThreadPool {
         }
     }
 
+    pub fn num_workers(&self) -> usize {
+        self.workers.len()
+    }
+
     /// Took a closure in input to be executed by a `Worker`.
     pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolErr>
     where

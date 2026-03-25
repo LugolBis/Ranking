@@ -1,0 +1,99 @@
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::PathBuf,
+    sync::Arc,
+};
+
+use crossbeam_channel::unbounded;
+
+use crate::{
+    errors::CSCErr,
+    matrix::{core::CSC, utils::filter_edges},
+};
+
+impl CSC {
+    /// Write the CSC matrix as the Matrix Format in the given `path` file.
+    pub fn dump(&self, path: &PathBuf) -> Result<(), CSCErr> {
+        let file = File::create(&path)
+            .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, path.display())))?;
+
+        let mut buffer = BufWriter::new(file);
+        buffer
+            .write_all("%%MatrixMarket matrix coordinate pattern general\n".as_bytes())
+            .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
+
+        let shape = &self.shape();
+        writeln!(
+            buffer,
+            "{} {} {}",
+            shape.rows(),
+            shape.columns(),
+            &self.count()
+        )
+        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
+
+        let mut iterator = self.columns().iter().enumerate();
+
+        while let Some((col_idx, opt_col)) = iterator.next() {
+            if let Some(column) = opt_col {
+                for value in column.rows.iter() {
+                    writeln!(buffer, "{} {}", value.get_row_index() + 1, col_idx + 1).map_err(
+                        |e| {
+                            CSCErr::Dump(format!(
+                                "Failed to write the value {} at row={} column={} due to {}",
+                                value.get_value(),
+                                value.get_row_index(),
+                                col_idx,
+                                e
+                            ))
+                        },
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn remove_edges(&self, treshold: f64) -> Result<CSC, CSCErr> {
+        let nb_threads = &self.pool().num_workers();
+        let (tx, rx) = unbounded();
+
+        let total_len = self.shape().rows() as usize;
+        let chunk_size = (total_len / (nb_threads * 2)) + 1;
+
+        let columns = Arc::new(self.columns().clone());
+
+        for chunk_id in 0..nb_threads * 2 {
+            let start = chunk_id * chunk_size;
+            if start >= total_len {
+                break;
+            }
+            let end = (start + chunk_size).min(total_len);
+
+            let tx_c = tx.clone();
+            let columns_c = Arc::clone(&columns);
+
+            let _ = &self
+                .pool()
+                .execute(move || filter_edges(tx_c, columns_c, treshold, chunk_id, start, end))
+                .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
+        }
+        drop(tx);
+
+        let mut filtered_columns = vec![Vec::new(); nb_threads * 2];
+        let mut rows_count = vec![Vec::new(); nb_threads * 2];
+        for (chunk_id, chunk_cols, chunk_rows_count) in rx.iter() {
+            filtered_columns[chunk_id] = chunk_cols;
+            rows_count[chunk_id] = chunk_rows_count;
+        }
+
+        Ok(CSC::from(
+            self.shape(),
+            filtered_columns.into_iter().flatten().collect(),
+            rows_count.into_iter().flatten().collect(),
+            self.alpha().clone(),
+        )?)
+    }
+}

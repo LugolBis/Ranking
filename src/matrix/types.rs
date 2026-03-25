@@ -85,3 +85,9 @@ impl Column {
         self.rows.iter().find(|v| v.row_index == row_idx)
     }
 }
+
+impl<'a> FromIterator<&'a Value> for LinkedList<Value> {
+    fn from_iter<T: IntoIterator<Item = &'a Value>>(iter: T) -> Self {
+        iter.into_iter().copied().collect()
+    }
+}

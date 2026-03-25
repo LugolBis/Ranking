@@ -6,4 +6,3 @@ pub mod matrix;
 pub mod parser;
 mod pool;
 pub mod simulation;
-pub mod types;

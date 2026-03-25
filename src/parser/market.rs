@@ -4,13 +4,13 @@ use crossbeam_channel::unbounded;
 
 use crate::{
     errors::{ParseErr, RefErr},
+    matrix::types::Shape,
     parser::{
         api::Parsed,
         chunk::{Chunk, Coord},
         enums::{Field, Format, Header, Object, Symmetry},
     },
     pool::ThreadPool,
-    types::Shape,
 };
 
 /// Parse a Matrix Market file.
