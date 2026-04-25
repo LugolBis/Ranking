@@ -1,4 +1,5 @@
 use std::{
+    collections::LinkedList,
     fs::File,
     io::{BufWriter, Write},
     path::PathBuf,
@@ -9,7 +10,7 @@ use crossbeam_channel::unbounded;
 
 use crate::{
     errors::CSCErr,
-    matrix::{core::CSC, utils::filter_edges},
+    matrix::{core::CSC, types::Value, utils::filter_edges},
 };
 
 impl CSC {
@@ -61,6 +62,7 @@ impl CSC {
         let (tx, rx) = unbounded();
 
         let total_len = self.shape().columns() as usize;
+        let rows_len = self.shape().rows() as usize;
         let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns().clone());
@@ -77,23 +79,53 @@ impl CSC {
 
             let _ = &self
                 .pool()
-                .execute(move || filter_edges(tx_c, columns_c, treshold, chunk_id, start, end))
+                .execute(move || {
+                    filter_edges(tx_c, columns_c, treshold, chunk_id, start, end, rows_len)
+                })
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
         }
         drop(tx);
 
         let mut filtered_columns = vec![Vec::new(); nb_threads * 2];
-        let mut rows_count = vec![Vec::new(); nb_threads * 2];
+        let mut rows_count = vec![0u64; rows_len];
         for (chunk_id, chunk_cols, chunk_rows_count) in rx.iter() {
             filtered_columns[chunk_id] = chunk_cols;
-            rows_count[chunk_id] = chunk_rows_count;
+            rows_count = rows_count
+                .iter()
+                .zip(chunk_rows_count)
+                .map(|(x, y)| x + y)
+                .collect();
         }
+
+        let renormalized: Vec<Option<LinkedList<Value>>> = filtered_columns
+            .into_iter()
+            .flatten()
+            .map(|opt_col| {
+                opt_col.map(|col| {
+                    col.into_iter()
+                        .map(|v| {
+                            let row_idx = v.get_row_index();
+                            let count = rows_count[row_idx];
+                            Value::from(if count == 0 { 0.0 } else { 1.0 / count as f64 }, row_idx)
+                        })
+                        .collect::<LinkedList<Value>>()
+                })
+            })
+            .collect();
 
         Ok(CSC::from(
             self.shape(),
-            filtered_columns.into_iter().flatten().collect(),
-            rows_count.into_iter().flatten().collect(),
+            renormalized,
+            rows_count,
             self.alpha().clone(),
         )?)
+
+        /*
+        Ok(CSC::from(
+            self.shape(),
+            filtered_columns.into_iter().flatten().collect(),
+            rows_count,
+            self.alpha().clone(),
+        )?)*/
     }
 }

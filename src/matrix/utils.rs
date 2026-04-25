@@ -42,9 +42,10 @@ pub fn filter_edges(
     chunk_id: usize,
     start: usize,
     end: usize,
+    rows_len: usize,
 ) -> Result<(), RefErr> {
     let mut local_cols = vec![None; end - start];
-    let mut local_rows_count = vec![0u64; end - start];
+    let mut row_count = vec![0u64; rows_len];
 
     for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
         if let Some(column) = opt {
@@ -55,12 +56,15 @@ pub fn filter_edges(
                 .collect::<LinkedList<Value>>();
 
             if !column_filtered.is_empty() {
-                local_rows_count[col_idx] = column_filtered.len() as u64;
+                for value in column_filtered.iter() {
+                    row_count[value.get_row_index()] += 1;
+                }
+
                 local_cols[col_idx] = Some(column_filtered);
             }
         }
     }
-    tx_c.send((chunk_id, local_cols, local_rows_count))
+    tx_c.send((chunk_id, local_cols, row_count))
         .map_err(|_| Box::new(CSCErr::SendErr) as RefErr)?;
     Ok(())
 }
