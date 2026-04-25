@@ -34,7 +34,7 @@ pub fn compute_mult(
     Ok(())
 }
 
-/// Compute the multiplication between `pi` and few columns of the matrix.
+/// Remove edges of the matrix based on the `treshold` in input.
 pub fn filter_edges(
     tx_c: Sender<(usize, Vec<Option<LinkedList<Value>>>, Vec<u64>)>,
     columns_c: Arc<Vec<Option<RefCol>>>,

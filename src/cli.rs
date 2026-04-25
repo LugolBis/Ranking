@@ -19,6 +19,8 @@ pub struct CLI {
     help: bool,
     #[serde(default)]
     simulate: bool,
+    #[serde(default)]
+    load: bool,
 }
 
 const HELP: &str = r#"
@@ -59,6 +61,7 @@ impl Default for CLI {
             output_dir: PathBuf::new(),
             help: true,
             simulate: false,
+            load: false,
         }
     }
 }
@@ -69,6 +72,7 @@ impl CLI {
         let mut conf_path: Option<PathBuf> = None;
         let mut help = false;
         let mut simulate = false;
+        let mut load = false;
 
         let mut args = std::env::args().skip(1);
 
@@ -89,6 +93,10 @@ impl CLI {
                     simulate = true;
                 }
 
+                "--load" | "-load" | "--l" | "-l" => {
+                    load = true;
+                }
+
                 _ => {
                     return Err(CLIErr::Unknown(format!("Unknown argument: {}", arg)));
                 }
@@ -107,20 +115,19 @@ impl CLI {
         let mut cli: CLI = serde_json::from_str(&content)
             .map_err(|e| CLIErr::Config(format!("Invalid JSON : {}", e)))?;
         cli.simulate = simulate;
+        cli.load = load;
 
         if cli.alpha.start() > cli.alpha.end() {
             return Err(CLIErr::Alpha("alpha.start must be <= alpha.end".into()));
         }
         if cli.treshold.start() > cli.treshold.end() {
-            return Err(CLIErr::Treshold("threshold must be in [0.0, 1.0]".into()));
+            return Err(CLIErr::Treshold("threshold must be in [0, 100]".into()));
         }
-        if cli.alpha.step() == 0.0 {
-            return Err(CLIErr::Alpha("alpha.step must be greater than 0.0".into()));
+        if cli.alpha.step() == 0f64 {
+            return Err(CLIErr::Alpha("alpha.step must be greater than 0".into()));
         }
-        if cli.treshold.step() == 0.0 {
-            return Err(CLIErr::Alpha(
-                "treshold.step must be greater than 0.0".into(),
-            ));
+        if cli.treshold.step() == 0f64 {
+            return Err(CLIErr::Alpha("treshold.step must be greater than 0".into()));
         }
         if cli.epsilon == 0.0 {
             return Err(CLIErr::Alpha("epsilon must be greater than 0.0".into()));
@@ -161,6 +168,7 @@ impl CLI {
                         cli.epsilon,
                         &cli.matrix_path,
                         &cli.output_dir,
+                        cli.load,
                     ) {
                         eprintln!("Simulation failed due to : [{}]", e);
                     } else {

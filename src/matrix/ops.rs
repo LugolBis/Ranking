@@ -60,7 +60,7 @@ impl CSC {
         let nb_threads = &self.pool().num_workers();
         let (tx, rx) = unbounded();
 
-        let total_len = self.shape().rows() as usize;
+        let total_len = self.shape().columns() as usize;
         let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns().clone());

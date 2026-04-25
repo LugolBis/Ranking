@@ -126,6 +126,7 @@ pub fn simulation(
     epsilon: f64,
     matrix_path: &PathBuf,
     output_dir: &PathBuf,
+    load: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data_path = output_dir.join("results.csv");
     let file = File::create(&data_path)?;
@@ -142,11 +143,17 @@ pub fn simulation(
     let mut counter = 0u64;
 
     while treshold.current <= treshold.end {
-        // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_tresh`
+        // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_treshold`
         let q_tresh = (treshold.current - prev_threshold) / (1f64 - prev_threshold);
 
         if q_tresh > 0f64 {
-            matrix = matrix.remove_edges(q_tresh)?;
+            let path = &output_dir.join(format!("{}.mtx", treshold.current));
+            if load {
+                matrix = parse_file(path, market_parser, 0f64)?;
+            } else {
+                matrix = matrix.remove_edges(q_tresh)?;
+                matrix.dump(path)?;
+            }
         }
 
         alpha.current = alpha.start;
@@ -162,9 +169,6 @@ pub fn simulation(
             print!("\r[Simulation : {}/{}]", counter, iterations);
             let _ = io::stdout().flush();
         }
-
-        // We save the computed matrix
-        // matrix.dump(&output_dir.join(format!("{}.mtx", treshold_current)))?;
 
         // We update the previous treshold with the current one
         prev_threshold = treshold.current;
