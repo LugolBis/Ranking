@@ -5,8 +5,11 @@ use crossbeam_channel::unbounded;
 use crate::{
     errors::CSCErr,
     maths::{compute_norm, uniform_vector},
-    matrix::types::{Column, Shape, Value},
-    matrix::utils::{compute_mult, get_f, get_surfer},
+    matrix::{
+        partition::GroupParition,
+        types::{Column, Shape, Value},
+        utils::{compute_mult, get_f, get_surfer},
+    },
     pool::ThreadPool,
 };
 
@@ -174,5 +177,23 @@ impl CSC {
         }
 
         Ok((pi_even, step * 2))
+    }
+
+    pub fn sub_matrix(self, group: GroupParition) -> Result<CSC, CSCErr> {
+        let mut sub_matrix_columns = Vec::new();
+        let mut row_count = Vec::new();
+        for col in 0..self.columns.len() {
+            if group.contains(col as u64)
+                && let Some(Some(column)) = self.columns.get(col)
+            {
+                let values = (*column).get_sub_column(&group);
+                row_count.push(values.len() as u64);
+                sub_matrix_columns.push(Some(values));
+            } else {
+                row_count.push(0);
+                sub_matrix_columns.push(None);
+            }
+        }
+        CSC::from(self.shape, sub_matrix_columns, row_count, self.alpha)
     }
 }

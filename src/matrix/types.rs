@@ -1,5 +1,7 @@
 use std::collections::LinkedList;
 
+use crate::matrix::partition::GroupParition;
+
 /// Represent a value of a column of the matrix. So Value.0 is the row index.
 #[derive(Debug, Clone, Copy)]
 pub struct Value {
@@ -83,6 +85,16 @@ impl Column {
     /// Return the value at the given index.
     pub fn get_value(&self, row_idx: usize) -> Option<&Value> {
         self.rows.iter().find(|v| v.row_index == row_idx)
+    }
+
+    pub fn get_sub_column(&self, group: &GroupParition) -> LinkedList<Value> {
+        let mut new_rows = LinkedList::new();
+        for value in self.rows.iter() {
+            if group.contains(value.row_index as u64) {
+                new_rows.push_back(*value);
+            }
+        }
+        new_rows
     }
 }
 
