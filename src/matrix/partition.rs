@@ -26,7 +26,7 @@ impl Partition {
         }
         for i in 0..node_count {
             let index = (random() * ((group_count - 1) as f64)).round() as usize;
-            groups.get_mut(index).unwrap().nodes.insert(i);
+            groups[index].nodes.insert(i);
         }
         Partition { groups }
     }

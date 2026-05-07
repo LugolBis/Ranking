@@ -179,18 +179,19 @@ impl CSC {
         Ok((pi_even, step * 2))
     }
 
-    pub fn sub_matrix(self, group: GroupParition) -> Result<CSC, CSCErr> {
+    pub fn sub_matrix(&self, group: GroupParition) -> Result<CSC, CSCErr> {
         let mut sub_matrix_columns = Vec::new();
-        let mut row_count = Vec::new();
+        let mut row_count = vec![0; self.columns.len()];
         for col in 0..self.columns.len() {
             if group.contains(col as u64)
                 && let Some(Some(column)) = self.columns.get(col)
             {
                 let values = (*column).get_sub_column(&group);
-                row_count.push(values.len() as u64);
+                for value in values.iter() {
+                    row_count[value.get_row_index()] += 1;
+                }
                 sub_matrix_columns.push(Some(values));
             } else {
-                row_count.push(0);
                 sub_matrix_columns.push(None);
             }
         }
