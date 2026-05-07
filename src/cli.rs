@@ -21,6 +21,8 @@ pub struct CLI {
     simulate: bool,
     #[serde(default)]
     load: bool,
+    #[serde(default)]
+    group_count: u64,
 }
 
 const HELP: &str = r#"
@@ -28,9 +30,10 @@ const HELP: &str = r#"
     Example : ranking --config /path/to/config.json
 
     ARGS :
-        --config, -config, --c, -c : The path to the configuration.
+        --config, -config, --c, -c : The path to the JSON configuration file.
         --help, -help, --h, -h : Display this message.
         --simulate, -simulate, --s, -s : Simulate the evolution of the stationary distribution convergence according to alpha and treshold.
+        --load, -load, --l, -l : Run the simulation by loading the previous matrix with edges removed.
 
     Config file example :
     {
@@ -62,6 +65,7 @@ impl Default for CLI {
             help: true,
             simulate: false,
             load: false,
+            group_count: 1,
         }
     }
 }
