@@ -87,14 +87,14 @@ impl Column {
         self.rows.iter().find(|v| v.row_index == row_idx)
     }
 
-    pub fn get_sub_column(&self, group: &GroupParition) -> LinkedList<Value> {
+    pub fn get_sub_column(&self, group: &GroupParition) -> Column {
         let mut new_rows = LinkedList::new();
         for value in self.rows.iter() {
             if group.contains(value.row_index as u64) {
                 new_rows.push_back(*value);
             }
         }
-        new_rows
+        Column { rows: new_rows }
     }
 }
 

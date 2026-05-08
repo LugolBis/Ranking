@@ -179,22 +179,29 @@ impl CSC {
         Ok((pi_even, step * 2))
     }
 
-    pub fn sub_matrix(&self, group: GroupParition) -> Result<CSC, CSCErr> {
+    pub fn sub_matrix(&self, group: GroupParition) -> CSC {
         let mut sub_matrix_columns = Vec::new();
-        let mut row_count = vec![0; self.columns.len()];
+        let mut f = vec![1.0; self.columns.len()];
         for col in 0..self.columns.len() {
             if group.contains(col as u64)
                 && let Some(Some(column)) = self.columns.get(col)
             {
-                let values = (*column).get_sub_column(&group);
-                for value in values.iter() {
-                    row_count[value.get_row_index()] += 1;
+                let sub_column = (*column).get_sub_column(&group);
+                for value in sub_column.rows.iter() {
+                    f[value.get_row_index()] = 0.0;
                 }
-                sub_matrix_columns.push(Some(values));
+                sub_matrix_columns.push(Some(Arc::new(sub_column)));
             } else {
                 sub_matrix_columns.push(None);
             }
         }
-        CSC::from(self.shape, sub_matrix_columns, row_count, self.alpha)
+        CSC {
+            shape: self.shape,
+            f,
+            columns: sub_matrix_columns,
+            alpha: self.alpha,
+            pool: self.pool.clone(),
+        }
+        // CSC::from(self.shape, sub_matrix_columns, row_count, self.alpha)
     }
 }
