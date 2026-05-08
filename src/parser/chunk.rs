@@ -42,7 +42,7 @@ impl Chunk {
     }
 
     /// Evenly distribute the probability according to the number of row values
-    pub fn into_parsed(&self, row_count: &[u64]) -> Vec<Parsed> {
+    pub fn parse(&self, row_count: &[u64]) -> Vec<Parsed> {
         self.coords
             .clone()
             .into_iter()

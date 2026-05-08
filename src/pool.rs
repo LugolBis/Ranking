@@ -53,10 +53,10 @@ impl Worker {
             while running.load(Ordering::Relaxed) || !job_queue.is_empty() {
                 match job_queue.pop() {
                     Some(Job::Task(task)) => {
-                        if let Err(e) = task() {
-                            if let Ok(mut mutex) = error_c.lock() {
-                                *mutex = Some(e.to_string());
-                            }
+                        if let Err(e) = task()
+                            && let Ok(mut mutex) = error_c.lock()
+                        {
+                            *mutex = Some(e.to_string());
                         }
                     }
                     Some(Job::Shutdown) => break,
@@ -120,6 +120,10 @@ impl ThreadPool {
         }
     }
 
+    pub fn num_workers(&self) -> usize {
+        self.workers.len()
+    }
+
     /// Took a closure in input to be executed by a `Worker`.
     pub fn execute<F>(&self, func: F) -> Result<(), ThreadPoolErr>
     where
@@ -162,9 +166,9 @@ impl ThreadPool {
                 cvar.notify_all();
             }
             Err(_) => {
-                ThreadPoolErr::JobSignal(
+                return Err(ThreadPoolErr::JobSignal(
                     "Warning: Couldn't acquire lock to notify workers. They will exit on their next timeout check.".into()
-                );
+                ));
             }
         }
 

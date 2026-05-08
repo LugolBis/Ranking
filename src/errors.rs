@@ -1,7 +1,5 @@
 use std::fmt;
 
-use crate::types::Shape;
-
 pub type RefErr = Box<dyn std::error::Error + Send + 'static>;
 
 #[derive(Debug, Clone)]
@@ -25,7 +23,7 @@ pub enum ThreadPoolErr {
 
 #[derive(Debug, Clone)]
 pub enum CSCErr {
-    ShapeColumn(Shape, usize),
+    ShapeColumn(u64, usize),
     Thread(String),
     SendErr,
     Epsilon(f64),
@@ -36,8 +34,11 @@ pub enum CSCErr {
 #[derive(Debug, Clone)]
 pub enum CLIErr {
     Alpha(String),
+    Config(String),
     Epsilon(String),
-    File(String),
+    Treshold(String),
+    Unknown(String),
+    Chart(String),
 }
 
 impl std::error::Error for ParseErr {}
@@ -111,8 +112,11 @@ impl fmt::Display for CLIErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CLIErr::Alpha(s) => write!(f, "{}", s),
+            CLIErr::Config(s) => write!(f, "{}", s),
             CLIErr::Epsilon(s) => write!(f, "{}", s),
-            CLIErr::File(s) => write!(f, "File error : [{}]", s),
+            CLIErr::Treshold(s) => write!(f, "{}", s),
+            CLIErr::Unknown(s) => write!(f, "Unknown argument : [{}]", s),
+            CLIErr::Chart(s) => write!(f, "Chart issue : [{}]", s),
         }
     }
 }

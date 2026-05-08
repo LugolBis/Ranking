@@ -4,130 +4,19 @@ use crossbeam_channel::unbounded;
 
 use crate::{
     errors::{ParseErr, RefErr},
+    matrix::types::Shape,
     parser::{
         api::Parsed,
         chunk::{Chunk, Coord},
+        enums::{Field, Format, Header, Object, Symmetry},
     },
     pool::ThreadPool,
-    types::Shape,
 };
-
-#[derive(Debug, Clone, Copy)]
-enum Object {
-    Matrix,
-    Vector,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Format {
-    Coordinate,
-    Array,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Field {
-    Real,
-    Double,
-    Complex,
-    Integer,
-    Pattern,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Symmetry {
-    General,
-    Symmetric,
-    SkewSymmetric,
-    Hermitian,
-}
-
-/// Represent the Header information of the Matrix Market format
-#[derive(Debug, Clone, Copy)]
-struct Header(Object, Format, Field, Symmetry);
-
-impl TryFrom<&str> for Object {
-    type Error = ParseErr;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
-            "matrix" => Ok(Object::Matrix),
-            "vector" => Ok(Object::Vector),
-            unknow => Err(ParseErr::Header(format!("Unknow Object : '{unknow}'."))),
-        }
-    }
-}
-
-impl TryFrom<&str> for Format {
-    type Error = ParseErr;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
-            "coordinate" => Ok(Format::Coordinate),
-            "array" => Ok(Format::Array),
-            unknow => Err(ParseErr::Header(format!("Unknow Format : '{unknow}'."))),
-        }
-    }
-}
-
-impl TryFrom<&str> for Field {
-    type Error = ParseErr;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
-            "real" => Ok(Field::Real),
-            "double" => Ok(Field::Double),
-            "complex" => Ok(Field::Complex),
-            "integer" => Ok(Field::Integer),
-            "pattern" => Ok(Field::Pattern),
-            unknow => Err(ParseErr::Header(format!("Unknow Field : '{unknow}'."))),
-        }
-    }
-}
-
-impl TryFrom<&str> for Symmetry {
-    type Error = ParseErr;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
-            "general" => Ok(Symmetry::General),
-            "symmetric" => Ok(Symmetry::Symmetric),
-            "skew_symmetric" => Ok(Symmetry::SkewSymmetric),
-            "hermitian" => Ok(Symmetry::Hermitian),
-            unknow => Err(ParseErr::Header(format!("Unknow Symmetry : '{unknow}'."))),
-        }
-    }
-}
-
-impl TryFrom<Option<String>> for Header {
-    type Error = ParseErr;
-    fn try_from(value: Option<String>) -> Result<Self, Self::Error> {
-        let content = value.ok_or(ParseErr::Header("There isn't the header line.".to_string()))?;
-        let mut parts = content.split(' ').skip(1);
-        let obj: Object = parts
-            .next()
-            .ok_or(ParseErr::Header("There isn't the object header.".into()))?
-            .try_into()?;
-
-        let fmt = parts
-            .next()
-            .ok_or(ParseErr::Header("There isn't the format header.".into()))?
-            .try_into()?;
-
-        let field: Field = parts
-            .next()
-            .ok_or(ParseErr::Header("There isn't the field header.".into()))?
-            .try_into()?;
-
-        let sym = parts
-            .next()
-            .ok_or(ParseErr::Header("There isn't the symmetry header.".into()))?
-            .try_into()?;
-
-        Ok(Header(obj, fmt, field, sym))
-    }
-}
 
 /// Parse a Matrix Market file.
 pub fn market_parser(
     iterator: &mut dyn Iterator<Item = String>,
-) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr> {
+) -> Result<(u64, Vec<Parsed>, Vec<u64>), ParseErr> {
     let header = iterator.next().try_into()?;
 
     let mut iterator = iterator.skip_while(|l| l.starts_with('%'));
@@ -139,7 +28,13 @@ pub fn market_parser(
         Symmetry::General,
     ) = header
     {
-        let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
+        let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(ParseErr::Shape)?;
+        if shape.rows() != shape.columns() {
+            return Err(ParseErr::Shape(String::from(
+                "Invalid format: graph can only be square matrix.",
+            )));
+        }
+        let size = shape.rows();
 
         let nb_threads = thread::available_parallelism()
             .map_err(|_| ParseErr::Thread("Failed to get availlable threds.".into()))?
@@ -149,7 +44,7 @@ pub fn market_parser(
 
         let lines = Arc::new(iterator.enumerate().collect::<Vec<(usize, String)>>());
         let total_len = lines.len();
-        let chunk_size = (total_len + nb_threads - 1) / nb_threads;
+        let chunk_size = total_len.div_ceil(nb_threads);
 
         for chunk_id in 0..nb_threads {
             let start = chunk_id * chunk_size;
@@ -162,7 +57,7 @@ pub fn market_parser(
             let lines_ref = Arc::clone(&lines);
 
             pool.execute(move || {
-                match parse_chunk(chunk_id, &lines_ref[start..end], shape.rows() as usize) {
+                match parse_chunk(chunk_id, &lines_ref[start..end], size as usize) {
                     Ok(chunk) => {
                         tx_c.send(Ok(chunk)).map_err(|_| {
                             Box::new(ParseErr::Thread("Sender error.".into())) as RefErr
@@ -185,23 +80,19 @@ pub fn market_parser(
         drop(tx);
 
         let mut chunks_opt: Vec<Option<Chunk>> = (0..nb_threads).map(|_| None).collect();
-        let mut step = 0f64;
         for res in rx {
             let chunk = res?;
             let index = &chunk.get_id();
             chunks_opt[*index] = Some(chunk);
-
-            step += 1f64;
-            println!("[Parsing {}%]", (step / nb_threads as f64) * 100f64)
         }
         let chunks = chunks_opt.iter().flatten().collect::<Vec<&Chunk>>();
         let row_count = join_row_count(&chunks)?;
 
         Ok((
-            shape,
+            size,
             chunks
                 .into_iter()
-                .flat_map(|chunk| chunk.into_parsed(&row_count[..]))
+                .flat_map(|chunk| chunk.parse(&row_count[..]))
                 .collect::<Vec<Parsed>>(),
             row_count,
         ))
@@ -215,7 +106,7 @@ pub fn market_parser(
 
 /// Join the row count of each computed chunk
 fn join_row_count(chunks: &Vec<&Chunk>) -> Result<Vec<u64>, ParseErr> {
-    let mut iterator = chunks.into_iter();
+    let mut iterator = chunks.iter();
 
     let mut row_count = iterator
         .next()
@@ -223,7 +114,7 @@ fn join_row_count(chunks: &Vec<&Chunk>) -> Result<Vec<u64>, ParseErr> {
         .get_row_count()
         .clone();
 
-    while let Some(chunk) = iterator.next() {
+    for chunk in iterator {
         for (r, v) in row_count.iter_mut().zip(chunk.get_row_count()) {
             *r += v;
         }
