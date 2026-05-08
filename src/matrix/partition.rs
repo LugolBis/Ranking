@@ -40,8 +40,8 @@ impl Partition {
             node_count += group.nodes.len();
         }
         let mut fusioned_stationary_distribution = vec![0_f64; node_count];
-        for group_index in 0..self.groups.len() {
-            for column in self.groups[group_index].nodes.iter() {
+        for (group_index, group) in self.groups.iter().enumerate() {
+            for column in group.nodes.iter() {
                 fusioned_stationary_distribution[*column as usize] =
                     stationary_distributions[group_index][*column as usize];
             }

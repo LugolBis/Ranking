@@ -52,13 +52,7 @@ impl CSC {
                 size,
                 columns: columns
                     .into_iter()
-                    .map(|col| {
-                        if let Some(rows) = col {
-                            Some(Arc::new(Column::from(rows)))
-                        } else {
-                            None
-                        }
-                    })
+                    .map(|col| col.map(|rows| Arc::new(Column::from(rows))))
                     .collect(),
                 f: get_f(row_count),
                 alpha,
@@ -123,7 +117,7 @@ impl CSC {
             let tx_c = tx.clone();
             let pi_c = Arc::clone(&pi_shared);
             let columns_c = Arc::clone(&columns);
-            let alpha = *&self.alpha;
+            let alpha = self.alpha;
 
             let _ = &self
                 .pool
@@ -156,7 +150,7 @@ impl CSC {
         let mut pi_odd: Vec<f64>;
         let n = 1f64 / self.size as f64;
         let csx = (1f64 - &self.alpha) * n;
-        let csy = &self.alpha * n;
+        let csy = self.alpha * n;
 
         let mut step = 0usize;
         let mut need_check = false;

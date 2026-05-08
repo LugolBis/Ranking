@@ -33,7 +33,7 @@ where
 {
     let file = File::open(path)
         .map_err(|e| ParseErr::File(format!("{} for the path `{}`", e, path.display())))?;
-    let mut buffer = BufReader::new(file).lines().flatten();
+    let mut buffer = BufReader::new(file).lines().map_while(Result::ok);
 
     let (size, parsed, row_count) = fn_parse(&mut buffer)?;
     let mut values: Vec<Option<LinkedList<Value>>> = vec![None; size as usize];

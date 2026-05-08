@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use serde::{Deserialize, Serialize};
@@ -125,7 +125,7 @@ pub fn simulation(
     mut treshold: Threshold,
     epsilon: f64,
     matrix_path: &PathBuf,
-    output_dir: &PathBuf,
+    output_dir: &Path,
     load: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data_path = output_dir.join("results.csv");

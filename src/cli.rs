@@ -164,7 +164,7 @@ impl CLI {
                         Err(e) => eprintln!("{}", e),
                     }
                 } else {
-                    println!("");
+                    println!();
 
                     if let Err(e) = simulation(
                         cli.alpha,

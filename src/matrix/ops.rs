@@ -16,7 +16,7 @@ use crate::{
 impl CSC {
     /// Write the CSC matrix as the Matrix Format in the given `path` file.
     pub fn dump(&self, path: &PathBuf) -> Result<(), CSCErr> {
-        let file = File::create(&path)
+        let file = File::create(path)
             .map_err(|e| CSCErr::Dump(format!("{} with path {}", e, path.display())))?;
 
         let mut buffer = BufWriter::new(file);
@@ -27,9 +27,9 @@ impl CSC {
         writeln!(buffer, "{} {} {}", self.size(), self.size(), &self.count())
             .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
 
-        let mut iterator = self.columns().iter().enumerate();
+        let iterator = self.columns().iter().enumerate();
 
-        while let Some((col_idx, opt_col)) = iterator.next() {
+        for (col_idx, opt_col) in iterator {
             if let Some(column) = opt_col {
                 for value in column.rows.iter() {
                     writeln!(buffer, "{} {}", value.get_row_index() + 1, col_idx + 1).map_err(
@@ -105,12 +105,7 @@ impl CSC {
             })
             .collect();
 
-        Ok(CSC::from(
-            self.size(),
-            renormalized,
-            rows_count,
-            self.alpha().clone(),
-        )?)
+        CSC::from(self.size(), renormalized, rows_count, self.alpha())
 
         /*
         Ok(CSC::from(

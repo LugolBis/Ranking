@@ -28,7 +28,7 @@ pub fn market_parser(
         Symmetry::General,
     ) = header
     {
-        let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
+        let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(ParseErr::Shape)?;
         if shape.rows() != shape.columns() {
             return Err(ParseErr::Shape(String::from(
                 "Invalid format: graph can only be square matrix.",
@@ -44,7 +44,7 @@ pub fn market_parser(
 
         let lines = Arc::new(iterator.enumerate().collect::<Vec<(usize, String)>>());
         let total_len = lines.len();
-        let chunk_size = (total_len + nb_threads - 1) / nb_threads;
+        let chunk_size = total_len.div_ceil(nb_threads);
 
         for chunk_id in 0..nb_threads {
             let start = chunk_id * chunk_size;
@@ -92,7 +92,7 @@ pub fn market_parser(
             size,
             chunks
                 .into_iter()
-                .flat_map(|chunk| chunk.into_parsed(&row_count[..]))
+                .flat_map(|chunk| chunk.parse(&row_count[..]))
                 .collect::<Vec<Parsed>>(),
             row_count,
         ))
@@ -106,7 +106,7 @@ pub fn market_parser(
 
 /// Join the row count of each computed chunk
 fn join_row_count(chunks: &Vec<&Chunk>) -> Result<Vec<u64>, ParseErr> {
-    let mut iterator = chunks.into_iter();
+    let mut iterator = chunks.iter();
 
     let mut row_count = iterator
         .next()
@@ -114,7 +114,7 @@ fn join_row_count(chunks: &Vec<&Chunk>) -> Result<Vec<u64>, ParseErr> {
         .get_row_count()
         .clone();
 
-    while let Some(chunk) = iterator.next() {
+    for chunk in iterator {
         for (r, v) in row_count.iter_mut().zip(chunk.get_row_count()) {
             *r += v;
         }
