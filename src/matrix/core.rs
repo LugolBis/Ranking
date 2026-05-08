@@ -7,7 +7,7 @@ use crate::{
     maths::{compute_norm, uniform_vector},
     matrix::{
         partition::GroupParition,
-        types::{Column, Shape, Value},
+        types::{Column, Value},
         utils::{compute_mult, get_f, get_surfer},
     },
     pool::ThreadPool,
@@ -19,7 +19,7 @@ pub type RefCol = Arc<Column>;
 /// Represent a Sparse Matrix as a `Compressed Sparse Column`.
 #[derive(Debug)]
 pub struct CSC {
-    shape: Shape,
+    size: u64,
     columns: Vec<Option<RefCol>>,
     /// f is a line vector of the same len of rows of the matrix.<br>
     /// It's constructed as following :<br>
@@ -33,7 +33,7 @@ pub struct CSC {
 
 impl CSC {
     pub fn from(
-        shape: Shape,
+        size: u64,
         columns: Vec<Option<LinkedList<Value>>>,
         row_count: Vec<u64>,
         alpha: f64,
@@ -45,11 +45,11 @@ impl CSC {
             .get();
         let pool: ThreadPool = ThreadPool::new(nb_threads);
 
-        if shape.columns() as usize != columns.len() {
-            Err(CSCErr::ShapeColumn(shape, columns.len()))
+        if size as usize != columns.len() {
+            Err(CSCErr::ShapeColumn(size, columns.len()))
         } else {
             Ok(CSC {
-                shape,
+                size,
                 columns: columns
                     .into_iter()
                     .map(|col| {
@@ -67,8 +67,8 @@ impl CSC {
         }
     }
 
-    pub fn shape(&self) -> Shape {
-        self.shape
+    pub fn size(&self) -> u64 {
+        self.size
     }
 
     pub fn columns(&self) -> &Vec<Option<RefCol>> {
@@ -100,16 +100,14 @@ impl CSC {
     /// pi * M (with M the matrix `CSC` itself)<br>
     /// Arguments `csx` and `csy` are coeficients used to compute the random surfer coeficient.
     pub fn mult_vec(&self, pi: &[f64], csx: f64, csy: f64) -> Result<Vec<f64>, CSCErr> {
-        let rows_len = self.shape.rows() as usize;
-
-        if rows_len != pi.len() {
-            return Err(CSCErr::ShapeVec(rows_len, pi.len()));
+        if self.size as usize != pi.len() {
+            return Err(CSCErr::ShapeVec(self.size as usize, pi.len()));
         }
 
         let nb_threads = &self.pool.num_workers();
         let (tx, rx) = unbounded();
 
-        let total_len = self.shape.rows() as usize;
+        let total_len = self.size as usize;
         let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns.clone());
@@ -142,7 +140,7 @@ impl CSC {
         Ok(result
             .into_iter()
             .flatten()
-            .zip(get_surfer(csx, csy, self.shape.rows(), pi, &self.f[..]))
+            .zip(get_surfer(csx, csy, self.size, pi, &self.f[..]))
             .map(|(x, y)| x + y)
             .collect())
     }
@@ -154,9 +152,9 @@ impl CSC {
             return Err(CSCErr::Epsilon(epsilon));
         }
 
-        let mut pi_even = uniform_vector(self.shape.rows() as usize);
+        let mut pi_even = uniform_vector(self.size as usize);
         let mut pi_odd: Vec<f64>;
-        let n = 1f64 / self.shape.rows() as f64;
+        let n = 1f64 / self.size as f64;
         let csx = (1f64 - &self.alpha) * n;
         let csy = &self.alpha * n;
 
@@ -196,12 +194,11 @@ impl CSC {
             }
         }
         CSC {
-            shape: self.shape,
+            size: self.size,
             f,
             columns: sub_matrix_columns,
             alpha: self.alpha,
             pool: self.pool.clone(),
         }
-        // CSC::from(self.shape, sub_matrix_columns, row_count, self.alpha)
     }
 }

@@ -16,7 +16,7 @@ use crate::{
 /// Parse a Matrix Market file.
 pub fn market_parser(
     iterator: &mut dyn Iterator<Item = String>,
-) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr> {
+) -> Result<(u64, Vec<Parsed>, Vec<u64>), ParseErr> {
     let header = iterator.next().try_into()?;
 
     let mut iterator = iterator.skip_while(|l| l.starts_with('%'));
@@ -29,6 +29,12 @@ pub fn market_parser(
     ) = header
     {
         let shape = Shape::parse(iterator.next(), " ", 0, 1).map_err(|e| ParseErr::Shape(e))?;
+        if shape.rows() != shape.columns() {
+            return Err(ParseErr::Shape(String::from(
+                "Invalid format: graph can only be square matrix.",
+            )));
+        }
+        let size = shape.rows();
 
         let nb_threads = thread::available_parallelism()
             .map_err(|_| ParseErr::Thread("Failed to get availlable threds.".into()))?
@@ -51,7 +57,7 @@ pub fn market_parser(
             let lines_ref = Arc::clone(&lines);
 
             pool.execute(move || {
-                match parse_chunk(chunk_id, &lines_ref[start..end], shape.rows() as usize) {
+                match parse_chunk(chunk_id, &lines_ref[start..end], size as usize) {
                     Ok(chunk) => {
                         tx_c.send(Ok(chunk)).map_err(|_| {
                             Box::new(ParseErr::Thread("Sender error.".into())) as RefErr
@@ -83,7 +89,7 @@ pub fn market_parser(
         let row_count = join_row_count(&chunks)?;
 
         Ok((
-            shape,
+            size,
             chunks
                 .into_iter()
                 .flat_map(|chunk| chunk.into_parsed(&row_count[..]))

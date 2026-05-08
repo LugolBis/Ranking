@@ -24,15 +24,8 @@ impl CSC {
             .write_all("%%MatrixMarket matrix coordinate pattern general\n".as_bytes())
             .map_err(|e| CSCErr::Dump(format!("Failed to write headers due to : {}", e)))?;
 
-        let shape = &self.shape();
-        writeln!(
-            buffer,
-            "{} {} {}",
-            shape.rows(),
-            shape.columns(),
-            &self.count()
-        )
-        .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
+        writeln!(buffer, "{} {} {}", self.size(), self.size(), &self.count())
+            .map_err(|e| CSCErr::Dump(format!("Failed to write shape due to : {}", e)))?;
 
         let mut iterator = self.columns().iter().enumerate();
 
@@ -61,8 +54,7 @@ impl CSC {
         let nb_threads = &self.pool().num_workers();
         let (tx, rx) = unbounded();
 
-        let total_len = self.shape().columns() as usize;
-        let rows_len = self.shape().rows() as usize;
+        let total_len = self.size() as usize;
         let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns().clone());
@@ -80,14 +72,14 @@ impl CSC {
             let _ = &self
                 .pool()
                 .execute(move || {
-                    filter_edges(tx_c, columns_c, treshold, chunk_id, start, end, rows_len)
+                    filter_edges(tx_c, columns_c, treshold, chunk_id, start, end, total_len)
                 })
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
         }
         drop(tx);
 
         let mut filtered_columns = vec![Vec::new(); nb_threads * 2];
-        let mut rows_count = vec![0u64; rows_len];
+        let mut rows_count = vec![0u64; self.size() as usize];
         for (chunk_id, chunk_cols, chunk_rows_count) in rx.iter() {
             filtered_columns[chunk_id] = chunk_cols;
             rows_count = rows_count
@@ -114,7 +106,7 @@ impl CSC {
             .collect();
 
         Ok(CSC::from(
-            self.shape(),
+            self.size(),
             renormalized,
             rows_count,
             self.alpha().clone(),

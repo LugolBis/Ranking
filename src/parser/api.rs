@@ -6,7 +6,6 @@ use std::path::PathBuf;
 
 use crate::errors::ParseErr;
 use crate::matrix::core::CSC;
-use crate::matrix::types::Shape;
 use crate::matrix::types::Value;
 
 #[derive(Debug)]
@@ -30,14 +29,14 @@ impl Parsed {
 /// The treshold permit to controll the percent of edges who will be removed, to remove 20% the treashold need to be 0.2 for example.
 pub fn parse_file<F>(path: &PathBuf, fn_parse: F, alpha: f64) -> Result<CSC, ParseErr>
 where
-    F: Fn(&mut dyn Iterator<Item = String>) -> Result<(Shape, Vec<Parsed>, Vec<u64>), ParseErr>,
+    F: Fn(&mut dyn Iterator<Item = String>) -> Result<(u64, Vec<Parsed>, Vec<u64>), ParseErr>,
 {
     let file = File::open(path)
         .map_err(|e| ParseErr::File(format!("{} for the path `{}`", e, path.display())))?;
     let mut buffer = BufReader::new(file).lines().flatten();
 
-    let (shape, parsed, row_count) = fn_parse(&mut buffer)?;
-    let mut values: Vec<Option<LinkedList<Value>>> = vec![None; shape.columns() as usize];
+    let (size, parsed, row_count) = fn_parse(&mut buffer)?;
+    let mut values: Vec<Option<LinkedList<Value>>> = vec![None; size as usize];
 
     // We supposed that the parsed values are sorted by rows.
     for ps in parsed {
@@ -50,5 +49,5 @@ where
             }
         }
     }
-    CSC::from(shape, values, row_count, alpha).map_err(|_| ParseErr::CSC)
+    CSC::from(size, values, row_count, alpha).map_err(|_| ParseErr::CSC)
 }

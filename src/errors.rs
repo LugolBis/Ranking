@@ -1,7 +1,5 @@
 use std::fmt;
 
-use crate::matrix::types::Shape;
-
 pub type RefErr = Box<dyn std::error::Error + Send + 'static>;
 
 #[derive(Debug, Clone)]
@@ -25,7 +23,7 @@ pub enum ThreadPoolErr {
 
 #[derive(Debug, Clone)]
 pub enum CSCErr {
-    ShapeColumn(Shape, usize),
+    ShapeColumn(u64, usize),
     Thread(String),
     SendErr,
     Epsilon(f64),
