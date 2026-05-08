@@ -1,0 +1,136 @@
+\documentclass[11pt,oneside,a4paper,french]{article}
+\usepackage[ruled,lined]{algorithm2e}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{graphicx}[]
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{alphabeta}
+\usepackage[a4paper, total={170mm,257mm}, left=20mm,top=20mm]{geometry}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage[all]{hypcap}
+\usepackage[toc,page]{appendix}
+\usepackage[section]{placeins}
+\renewcommand{\appendixpagename}{Annexes}
+\renewcommand{\appendixtocname}{Annexes}
+\usepackage{subcaption}
+
+\usepackage[utf8]{inputenc}
+\usepackage[table,xcdraw]{xcolor}
+
+\usepackage{graphicx}
+\graphicspath{{../simulation/}}
+
+\title{Rapport Ranking M1}
+\author{Loïc Desmarès & Baptiste Boisserie}
+\date{Mai 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Objectif et présentation des matrices NCD appliquées à Pagerank}
+
+L'objectif de notre projet est d'étudier le temps de convergence de la distribution stationnaire selon $\alpha$ pour une matrice \textbf{NCD} induite d'un graphe du WEB. Une matrice \textbf{NCD} est une \textbf{chaîne de Markov} pour laquelle l'espace d'état peut être partitionné afin que les probabilités de transition entre deux sommets de la même partition, soit plus fréquente que celle entre deux sommets de partitions distinctes.\\
+De plus on rappelle la formule du graphe du web noté $G$ : $G = \alpha P + \alpha (\frac{1}{N}) f e^t + (1-\alpha)(\frac{1}{N})e e^t$\\
+sachant $P$ une matrice de taille $N \times N$ qui est la chaîne de Markov modélisant la pertinence des pages web, $f$ un vecteur colonne modélisnat les lignes vides dans $P$, $e$ un vecteur colonne ne contenant que des 1 et $\alpha$ la probabilité que le surfer aléatoire clique sur une page aléatoirement ($\alpha = 0.85$ dans Pagerank initial). Enfin on rappelle que la probabilité stationnaire noté $\pi$ est un vecteur ligne tel que $\pi G = \pi$ et $\pi e = 1$.
+
+\section{Matrice NCD induite de supressions aléatoire d'arcs}
+
+Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer aléatoirement des arcs du graphe du web afin de créer des partitions. Pour simuler l'évolution du temps de convergence de la distribution stationnaire selon alpha et le poucentage d'arcs supprimé nous avons élaboré une simulation qui garde en mémoire les arcs retirés. Cela signifie donc que nous retirons $10\%$ des arcs de la matrice de départ, puis nous retirons $10\%$ suplémentaire à la matrice induite en tenant compte du pourcentage d'arcs déjà retiré. Nous obtenons donc trois matrice, la matrice initiale, la matrice NCD induite avec $10\%$ d'arcs supprimé et celle induite avec en plus $10\%$ d'arcs en moins.
+
+% \subsection{Variables d'état}
+
+\newpage
+
+\begin{appendices}
+\section{Évolution de $\pi$ selon $\alpha$ pour une NCD induite par un procédé aléatoire}
+
+\subsection{Avec le paramètre fixé $\epsilon = +1e-6$}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e6/wb-cs-stanford.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e6/wb-cs-stanford.2.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e6/wikipedia-20051105.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e6/wikipedia-20051105.2.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+
+\subsection{Avec le paramètre fixe $\epsilon = +1e-9$}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e9/wb-cs-stanford.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e9/wb-cs-stanford.2.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e9/wikipedia-20051105.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e9/wikipedia-20051105.2.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\subsection{Avec le paramètre fixe $\epsilon = +1e-12$}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e12/wb-cs-stanford.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e12/wb-cs-stanford.2.png}}
+\caption{Matrice du web \textit{wb-cs-stanford}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e12/wikipedia-20051105.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e12/wikipedia-20051105.2.png}}
+\caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\end{appendices}
+\end{document}

@@ -6,3 +6,7 @@
 *.data.old
 *.mtx
 *.json
+*.aux
+*.log
+*.out
+*.pdf
