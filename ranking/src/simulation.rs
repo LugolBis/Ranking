@@ -166,7 +166,10 @@ pub fn simulation(
             alpha.increment();
 
             counter += 1;
-            print!("\r[Simulation : {}/{}]", counter, iterations);
+            print!(
+                "\r[Simulation : {}%]",
+                ((counter as f64) / (iterations as f64) * 100f64).round()
+            );
             let _ = io::stdout().flush();
         }
 
@@ -175,6 +178,8 @@ pub fn simulation(
         treshold.increment();
     }
 
+    print!("\r[Simulation : 100%]");
+    let _ = io::stdout().flush();
     println!();
     Ok(())
 }
