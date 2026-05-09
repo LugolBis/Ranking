@@ -1,4 +1,3 @@
-use crate::chart::generate;
 use crate::errors::CLIErr;
 use crate::parser::{api::parse_file, market::market_parser};
 use crate::simulation::{Alpha, Threshold, simulation};
@@ -176,14 +175,11 @@ impl CLI {
                     ) {
                         eprintln!("Simulation failed due to : [{}]", e);
                     } else {
-                        println!("Successfully run the simulation.");
-                        if let Err(e) = generate(
-                            &cli.output_dir.join("results.csv"),
-                            &cli.output_dir.join("chart.png"),
-                            cli.epsilon,
-                        ) {
-                            eprintln!("{}", e);
-                        };
+                        println!("Successfully run the simulation !");
+                        println!(
+                            "The results of the simulation are written in '{:#?}'",
+                            &cli.output_dir.join("results.csv")
+                        );
                     }
                 }
             }
