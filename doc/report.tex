@@ -11,7 +11,6 @@
 \usepackage{float}
 \usepackage{longtable}
 \usepackage{caption}
-\usepackage{float}
 \usepackage{alphabeta}
 \usepackage[a4paper, total={170mm,257mm}, left=20mm,top=20mm]{geometry}
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
@@ -35,7 +34,9 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
 
+\newpage
 \section{Objectif et présentation des matrices NCD appliquées à Pagerank}
 
 L'objectif de notre projet est d'étudier le temps de convergence de la distribution stationnaire selon $\alpha$ pour une matrice \textbf{NCD} induite d'un graphe du WEB. Une matrice \textbf{NCD} est une \textbf{chaîne de Markov} pour laquelle l'espace d'état peut être partitionné afin que les probabilités de transition entre deux sommets de la même partition, soit plus fréquente que celle entre deux sommets de partitions distinctes.\\
@@ -44,8 +45,11 @@ sachant $P$ une matrice de taille $N \times N$ qui est la chaîne de Markov mod�
 
 \section{Matrice NCD induite de supressions aléatoire d'arcs}
 
+\subsection{Construction de la matrice NCD}
+
 Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer aléatoirement des arcs du graphe du web afin de créer des partitions. Pour simuler l'évolution du temps de convergence de la distribution stationnaire selon alpha et le poucentage d'arcs supprimé nous avons élaboré une simulation qui garde en mémoire les arcs retirés. Cela signifie donc que nous retirons $10\%$ des arcs de la matrice de départ, puis nous retirons $10\%$ suplémentaire à la matrice induite en tenant compte du pourcentage d'arcs déjà retiré. Nous obtenons donc trois matrice, la matrice initiale, la matrice NCD induite avec $10\%$ d'arcs supprimé et celle induite avec en plus $10\%$ d'arcs en moins.
 
+\subsection{Résultats}
 % \subsection{Variables d'état}
 
 \newpage
@@ -130,6 +134,12 @@ Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer
     \makebox[\linewidth]{\centering
     \includegraphics[scale=0.3]{/e12/wikipedia-20051105.2.png}}
 \caption{Matrice du web \textit{wikipedia-20051105}}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/e12/wikipedia-20060925.png}}
+\caption{Matrice du web \textit{wikipedia-20060925}}
 \end{figure}
 
 \end{appendices}
