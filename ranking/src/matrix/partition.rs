@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::maths::random;
+use crate::maths::RngSeq;
 
 const PARTITION_SEED: u64 = 42;
 
@@ -26,8 +26,9 @@ impl Partition {
                 nodes: HashSet::new(),
             });
         }
+        let mut rndseq = RngSeq::from(PARTITION_SEED);
         for i in 0..node_count {
-            let index = (random(PARTITION_SEED) * ((group_count - 1) as f64)).round() as usize;
+            let index = (rndseq.next() * ((group_count - 1) as f64)).round() as usize;
             groups[index].nodes.insert(i);
         }
         Partition { groups }

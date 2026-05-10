@@ -2,7 +2,7 @@ use std::{collections::LinkedList, sync::Arc};
 
 use crate::{
     errors::{CSCErr, RefErr},
-    maths::random,
+    maths::RngSeq,
     matrix::core::RefCol,
     matrix::types::Value,
 };
@@ -47,13 +47,14 @@ pub fn filter_edges(
 ) -> Result<(), RefErr> {
     let mut local_cols = vec![None; end - start];
     let mut row_count = vec![0u64; rows_len];
+    let mut rdseq = RngSeq::from(seed);
 
     for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
         if let Some(column) = opt {
             let column_filtered = column
                 .rows
                 .iter()
-                .filter(|_| random(seed) >= treshold)
+                .filter(|_| rdseq.next() >= treshold)
                 .collect::<LinkedList<Value>>();
 
             if !column_filtered.is_empty() {
