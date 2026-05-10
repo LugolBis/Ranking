@@ -127,6 +127,7 @@ pub fn simulation(
     matrix_path: &PathBuf,
     output_dir: &Path,
     load: bool,
+    seed: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data_path = output_dir.join("results.csv");
     let file = File::create(&data_path)?;
@@ -151,7 +152,7 @@ pub fn simulation(
             if load {
                 matrix = parse_file(path, market_parser, 0f64)?;
             } else {
-                matrix = matrix.remove_edges(q_tresh)?;
+                matrix = matrix.remove_edges(q_tresh, seed)?;
                 matrix.dump(path)?;
             }
         }

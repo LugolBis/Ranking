@@ -21,6 +21,8 @@ pub struct CLI {
     #[serde(default)]
     load: bool,
     #[serde(default)]
+    seed: u64,
+    #[serde(default)]
     group_count: u64,
 }
 
@@ -48,7 +50,9 @@ const HELP: &str = r#"
         },
         "epsilon": 1e-6,
         "matrix_path": "/path/to/your/matrix.mtx",
-        "output_dir": "/etc/path/to/your/simulation_output_dir/"
+        "output_dir": "/etc/path/to/your/simulation_output_dir/",
+        "seed": 42,
+        "group_count": 40
     }
 "#;
 
@@ -64,6 +68,7 @@ impl Default for CLI {
             help: true,
             simulate: false,
             load: false,
+            seed: 42,
             group_count: 1,
         }
     }
@@ -172,6 +177,7 @@ impl CLI {
                         &cli.matrix_path,
                         &cli.output_dir,
                         cli.load,
+                        cli.seed,
                     ) {
                         eprintln!("Simulation failed due to : [{}]", e);
                     } else {

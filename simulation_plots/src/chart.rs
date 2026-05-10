@@ -19,6 +19,7 @@ pub fn generate(
     data_path: &PathBuf,
     chart_path: &PathBuf,
     epsilon: f64,
+    seed: u64,
 ) -> Result<(), Box<dyn Error>> {
     // Read the CSV file
     let mut data_per_edge: HashMap<u64, Vec<(f64, f64)>> = HashMap::new();
@@ -69,8 +70,8 @@ pub fn generate(
     let mut chart = ChartBuilder::on(&root)
         .caption(
             format!(
-                "Stationary distribution converging time according to alpha with epsilon = {:+e}",
-                epsilon
+                "Stationary distribution converging time according to alpha with (epsilon, seed) = ({:+e}, {})",
+                epsilon, seed
             ),
             ("sans-serif", 25),
         )

@@ -1,43 +1,49 @@
 use crate::chart::generate;
 use std::path::PathBuf;
 
-const HELP: &str = r#"
-    Usage : simulation_plots <FILE_PATH> <EPSILON>
+pub const HELP: &str = r#"
+    Usage : simulation_plots <FILE_PATH> <EPSILON> <SEED>
     Example : simulation_plots /path/to/results.csv
 
     <FILE_PATH> : Absolute file path of the CSV file which contains the simulation results.
-    <EPSILON> : The epsilon of the simulation.
+    <EPSILON> : The epsilon for the simulation.
+    <SEED> : The seed used for the simulation.
 "#;
 
-pub fn main() {
+pub fn main() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
 
-    if let (Some(path_str), Some(epsilon_str)) = (args.next(), args.next()) {
-        let data_path = PathBuf::from(path_str);
+    let data_path = PathBuf::from(args.next().ok_or("Missing data file path in input.")?);
 
-        match epsilon_str.parse::<f64>() {
-            Ok(epsilon) => {
-                if let Some(path_dir) = data_path.parent() {
-                    let chart_path = path_dir.join("chart.png");
+    let epsilon = args
+        .next()
+        .ok_or("Missing epsilon in input.")?
+        .parse::<f64>()
+        .or(Err("Failed to parse epsilon.".to_string()))?;
 
-                    match generate(&data_path, &chart_path, epsilon) {
-                        Ok(_) => println!("Successfully generate the chart '{:#?}' !", chart_path),
-                        Err(err) => {
-                            println!("Failed to generate the chart due to the error : {}", err)
-                        }
-                    }
-                } else {
-                    println!(
-                        "Failed to retrieve the parent folder of the file '{:#?}'",
-                        data_path
-                    );
-                }
+    let seed = args
+        .next()
+        .ok_or("Missing seed in input.")?
+        .parse::<u64>()
+        .or(Err("Failed to parse seed.".to_string()))?;
+
+    if let Some(path_dir) = data_path.parent() {
+        let chart_path = path_dir.join("chart.png");
+
+        match generate(&data_path, &chart_path, epsilon, seed) {
+            Ok(_) => {
+                println!("Successfully generate the chart '{:#?}' !", chart_path);
+                Ok(())
             }
-            Err(err) => {
-                println!("Failed to parse epsilon '{}' due to '{}'", epsilon_str, err);
-            }
+            Err(err) => Err(format!(
+                "Failed to generate the chart due to the error : {}",
+                err
+            )),
         }
     } else {
-        println!("{}", HELP);
+        Err(format!(
+            "Failed to retrieve the parent folder of the file '{:#?}'",
+            data_path
+        ))
     }
 }

@@ -43,6 +43,7 @@ pub fn filter_edges(
     start: usize,
     end: usize,
     rows_len: usize,
+    seed: u64,
 ) -> Result<(), RefErr> {
     let mut local_cols = vec![None; end - start];
     let mut row_count = vec![0u64; rows_len];
@@ -52,7 +53,7 @@ pub fn filter_edges(
             let column_filtered = column
                 .rows
                 .iter()
-                .filter(|_| random() >= treshold)
+                .filter(|_| random(seed) >= treshold)
                 .collect::<LinkedList<Value>>();
 
             if !column_filtered.is_empty() {

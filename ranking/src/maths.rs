@@ -1,6 +1,5 @@
-use std::hash::{BuildHasher, Hasher, RandomState};
-
-const EXPONENT_MASK: u64 = 1023 << 52;
+use rand::rngs::StdRng;
+use rand::{RngExt, SeedableRng};
 
 /// Compute the norm difference between the two vectors took in input.
 pub fn compute_norm(v_new: &[f64], v: &[f64]) -> f64 {
@@ -13,6 +12,7 @@ pub fn uniform_vector(len: usize) -> Vec<f64> {
 }
 
 /// Generate a random value between 0.0 and 1.0
-pub fn random() -> f64 {
-    f64::from_bits(EXPONENT_MASK | RandomState::new().build_hasher().finish() >> 12) - 1.0
+pub fn random(seed: u64) -> f64 {
+    let mut rng = StdRng::seed_from_u64(seed);
+    rng.random::<f64>()
 }

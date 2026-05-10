@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use crate::maths::random;
 
+const PARTITION_SEED: u64 = 42;
+
 pub struct GroupParition {
     nodes: HashSet<u64>,
 }
@@ -25,7 +27,7 @@ impl Partition {
             });
         }
         for i in 0..node_count {
-            let index = (random() * ((group_count - 1) as f64)).round() as usize;
+            let index = (random(PARTITION_SEED) * ((group_count - 1) as f64)).round() as usize;
             groups[index].nodes.insert(i);
         }
         Partition { groups }
