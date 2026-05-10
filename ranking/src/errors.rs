@@ -29,6 +29,7 @@ pub enum CSCErr {
     Epsilon(f64),
     ShapeVec(usize, usize),
     Dump(String),
+    ConversionFailed(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +105,9 @@ impl fmt::Display for CSCErr {
                 rows, vec_size
             ),
             CSCErr::Dump(s) => write!(f, "Failed to dump the matrix due to : {}", s),
+            CSCErr::ConversionFailed(value) => {
+                write!(f, "Failed to convert the u64: {} to usize.", value)
+            }
         }
     }
 }

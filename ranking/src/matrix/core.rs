@@ -1,4 +1,8 @@
-use std::{collections::LinkedList, sync::Arc, thread};
+use std::{
+    collections::{HashMap, LinkedList},
+    sync::Arc,
+    thread,
+};
 
 use crossbeam_channel::unbounded;
 
@@ -6,7 +10,7 @@ use crate::{
     errors::CSCErr,
     maths::{compute_norm, uniform_vector},
     matrix::{
-        partition::{GroupParition, Partition},
+        partition::{GroupPartition, Partition},
         types::{Column, Value},
         utils::{compute_mult, get_f, get_surfer},
     },
@@ -93,7 +97,13 @@ impl CSC {
     /// Compute the following operation :<br>
     /// pi * M (with M the matrix `CSC` itself)<br>
     /// Arguments `csx` and `csy` are coeficients used to compute the random surfer coeficient.
-    pub fn mult_vec(&self, pi: &[f64], csx: f64, csy: f64) -> Result<Vec<f64>, CSCErr> {
+    pub fn mult_vec(
+        &self,
+        group: GroupPartition,
+        pi: &[f64],
+        csx: f64,
+        csy: f64,
+    ) -> Result<Vec<f64>, CSCErr> {
         if self.size as usize != pi.len() {
             return Err(CSCErr::ShapeVec(self.size as usize, pi.len()));
         }
@@ -107,6 +117,8 @@ impl CSC {
         let columns = Arc::new(self.columns.clone());
         let pi_shared = Arc::new(pi.to_vec());
 
+        let group_ref = Arc::new(group);
+
         for chunk_id in 0..nb_threads * 2 {
             let start = chunk_id * chunk_size;
             if start >= total_len {
@@ -118,10 +130,22 @@ impl CSC {
             let pi_c = Arc::clone(&pi_shared);
             let columns_c = Arc::clone(&columns);
             let alpha = self.alpha;
+            let group_ref_c = group_ref.clone();
 
             let _ = &self
                 .pool
-                .execute(move || compute_mult(tx_c, pi_c, columns_c, alpha, chunk_id, start, end))
+                .execute(move || {
+                    compute_mult(
+                        tx_c,
+                        pi_c,
+                        columns_c,
+                        group_ref_c,
+                        alpha,
+                        chunk_id,
+                        start,
+                        end,
+                    )
+                })
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
         }
         drop(tx);
@@ -155,18 +179,23 @@ impl CSC {
         let partition = Partition::new(self.size, group_count);
         let mut stationary_distributions = Vec::new();
 
-        for group in partition.groups() {
+        for group in partition.groups().iter() {
             let (stationary_distribution, steps) = self
-                .sub_matrix(group)
-                .stationary_distribution_from(epsilon, uniform_vector(self.size as usize))?;
+                .sub_matrix(group)?
+                .stationary_distribution_from(group, epsilon, uniform_vector(group.len()))?;
             step += steps;
             stationary_distributions.push(stationary_distribution);
         }
 
         let stationary_distribution =
             partition.fusion_stationary_distributions(stationary_distributions);
+        let mut values = HashMap::new();
+        for index in 0..self.size {
+            values.insert(index, index as usize);
+        }
+        let group = GroupPartition::new(values);
         let (final_stationary_distribution, steps) =
-            self.stationary_distribution_from(epsilon, stationary_distribution)?;
+            self.stationary_distribution_from(&group, epsilon, stationary_distribution)?;
         step += steps;
 
         Ok((final_stationary_distribution, step * 2))
@@ -174,6 +203,7 @@ impl CSC {
 
     fn stationary_distribution_from(
         &self,
+        group: &GroupPartition,
         epsilon: f64,
         pi: Vec<f64>,
     ) -> Result<(Vec<f64>, usize), CSCErr> {
@@ -192,8 +222,8 @@ impl CSC {
         let mut norm = 1.0;
 
         while norm > epsilon {
-            pi_odd = self.mult_vec(&pi_even, csx, csy)?;
-            pi_even = self.mult_vec(&pi_odd, csx, csy)?;
+            pi_odd = self.mult_vec(group.clone(), &pi_even, csx, csy)?;
+            pi_even = self.mult_vec(group.clone(), &pi_odd, csx, csy)?;
 
             if need_check {
                 norm = compute_norm(&pi_even, &pi_odd);
@@ -206,28 +236,36 @@ impl CSC {
         Ok((pi_even, step * 2))
     }
 
-    pub fn sub_matrix(&self, group: &GroupParition) -> CSC {
+    pub fn sub_matrix(&self, group: &GroupPartition) -> Result<CSC, CSCErr> {
         let mut sub_matrix_columns = Vec::new();
-        let mut f = vec![1.0; self.size as usize];
-        for col in 0..self.columns.len() {
-            if group.contains(col as u64)
-                && let Some(Some(column)) = self.columns.get(col)
-            {
-                let sub_column = (*column).get_sub_column(group);
-                for value in sub_column.rows.iter() {
-                    f[value.get_row_index()] = 0.0;
+        let mut f = vec![1.0; group.len()];
+        for column_index in 0..self.size as usize {
+            if group.contains(column_index as u64) {
+                if let Some(Some(column)) = self.columns.get(column_index) {
+                    let sub_column = (*column).get_sub_column(group);
+                    for value in sub_column.rows.iter() {
+                        f[group.index(
+                            value
+                                .get_row_index()
+                                .try_into()
+                                .or(Err(CSCErr::ConversionFailed(value.get_row_index())))?,
+                        )] = 0.0;
+                    }
+                    sub_matrix_columns.push(Some(Arc::new(sub_column)));
+                } else {
+                    sub_matrix_columns.push(None);
                 }
-                sub_matrix_columns.push(Some(Arc::new(sub_column)));
-            } else {
-                sub_matrix_columns.push(None);
             }
         }
-        CSC {
-            size: self.size,
+        Ok(CSC {
+            size: group
+                .len()
+                .try_into()
+                .or(Err(CSCErr::ConversionFailed(group.len())))?,
             f,
             columns: sub_matrix_columns,
             alpha: self.alpha,
             pool: self.pool.clone(),
-        }
+        })
     }
 }

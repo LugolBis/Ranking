@@ -3,8 +3,7 @@ use std::{collections::LinkedList, sync::Arc};
 use crate::{
     errors::{CSCErr, RefErr},
     maths::RngSeq,
-    matrix::core::RefCol,
-    matrix::types::Value,
+    matrix::{core::RefCol, partition::GroupPartition, types::Value},
 };
 use crossbeam_channel::Sender;
 
@@ -13,6 +12,7 @@ pub fn compute_mult(
     tx_c: Sender<(usize, Vec<f64>)>,
     pi_c: Arc<Vec<f64>>,
     columns_c: Arc<Vec<Option<RefCol>>>,
+    group: Arc<GroupPartition>,
     alpha: f64,
     chunk_id: usize,
     start: usize,
@@ -24,7 +24,9 @@ pub fn compute_mult(
         if let Some(column) = opt {
             let mut local = 0.0;
             for &value in column.rows.iter() {
-                local += alpha * pi_c[value.get_row_index()] * value.get_value();
+                local += alpha
+                    * pi_c[group.index(value.get_row_index().try_into().unwrap())]
+                    * value.get_value();
             }
             local_vec[col_idx] = local;
         }
