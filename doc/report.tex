@@ -50,7 +50,8 @@ sachant $P$ une matrice de taille $N \times N$ qui est la chaîne de Markov mod�
 Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer aléatoirement des arcs du graphe du web afin de créer des partitions. Pour simuler l'évolution du temps de convergence de la distribution stationnaire selon alpha et le poucentage d'arcs supprimé nous avons élaboré une simulation qui garde en mémoire les arcs retirés. Cela signifie donc que nous retirons $10\%$ des arcs de la matrice de départ, puis nous retirons $10\%$ suplémentaire à la matrice induite en tenant compte du pourcentage d'arcs déjà retiré. Nous obtenons donc trois matrice, la matrice initiale, la matrice NCD induite avec $10\%$ d'arcs supprimé et celle induite avec en plus $10\%$ d'arcs en moins.
 
 \subsection{Résultats}
-% \subsection{Variables d'état}
+Les resultats observés pour les figures \ref{fig:ncd_alea-nv2}, \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-cs-stanford2}, \ref{fig:ncd_alea-wikipedia-20051105}, \ref{fig:ncd_alea-wikipedia-20070206} et \ref{fig:ncd_alea-wikipedia-200702062} démontrent que retirer aléatoirement des arcs ne réduit pas toujours le temps de convergeance de la distribution stationaire mais peut l'augmenter. Tandis que les figures \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-edu}, \ref{fig:ncd_alea-wikipedia-20060925}, \ref{fig:ncd_alea-wikipedia-200609252} et \ref{fig:ncd_alea-wikipedia-200702062} elles illustrent les intuitions initiales. Nos observations divergeantes (comme l'illustre la figure \ref{fig:ncd_alea-wikipedia-200702062}), démontrent que notre processus de construction d'une matrice \textbf{NCD} est fragile.\\
+En effet pour induire une matrice NCD de la matrice initiale nous retirons des arcs tirés aléatoirement, sans aucune garantie - les figures l'illustrent parfaitement. Le processus étant aléatoire il n'est pas restreint a des composantes connexe du graphe et peut parfaitement retirer un arc constituant à lui seul une composante connexe isolé. La suppresion de l'unique arc sortant d'un noeud provoque la redistribution uniforme de sa probabilité avec tous les autres noeuds, ce qui augmente la variation de $\pi$ et augmente donc le temps de convergence de la distribution stationnaire. Néanmoins cette suppresion d'arc tiré aléatoirement peut aussi mener à isoler des composantes fortements connexe et ainsi générer une matrice NCD et diminuer le temps de convergence de la distribution stationnaire.
 
 \newpage
 
@@ -59,89 +60,81 @@ Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer
 
 Les expérimentations de cette section ont été conduite sur une seule machine : HP ENVY Laptop 13-ba1xxx avec un processeur 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz (8 coeurs physique, 16 threads, L2=5MiB et L3=12MiB), architecture x86\_64, 8 GiB DDR4 (2$\times$4Gib), NVME, Linux 7.0.3-1-cachyos : SMP PREEMPT Sat, 02 May 2026 02:50:09 +0000 x86\_64 GNU/Linux et compilé avec rustc 1.91.1 (ed61e7d7e 2025-11-07, avec le flag \textit{--release}).
 
-\subsection{Avec le paramètre fixé $\epsilon = +1e-6$}
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/ncd_alea/nv2.png}}
+\caption{Matrice du web \textit{nv2}}
+\label{fig:ncd_alea-nv2}
+\end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e6/wb-cs-stanford.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wb-cs-stanford.png}}
 \caption{Matrice du web \textit{wb-cs-stanford}}
+\label{fig:ncd_alea-wb-cs-stanford}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e6/wb-cs-stanford.2.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wb-cs-stanford.2.png}}
 \caption{Matrice du web \textit{wb-cs-stanford}}
+\label{fig:ncd_alea-wb-cs-stanford2}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e6/wikipedia-20051105.png}}
-\caption{Matrice du web \textit{wikipedia-20051105}}
-\end{figure}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e6/wikipedia-20051105.2.png}}
-\caption{Matrice du web \textit{wikipedia-20051105}}
-\end{figure}
-
-
-\subsection{Avec le paramètre fixe $\epsilon = +1e-9$}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e9/wb-cs-stanford.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wb-cs-stanford.3.png}}
 \caption{Matrice du web \textit{wb-cs-stanford}}
+\label{fig:ncd_alea-wb-cs-stanford3}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e9/wb-cs-stanford.2.png}}
-\caption{Matrice du web \textit{wb-cs-stanford}}
+    \includegraphics[scale=0.3]{/ncd_alea/wb-edu.png}}
+\caption{Matrice du web \textit{wb-edu}}
+\label{fig:ncd_alea-wb-edu}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e9/wikipedia-20051105.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20051105.png}}
 \caption{Matrice du web \textit{wikipedia-20051105}}
+\label{fig:ncd_alea-wikipedia-20051105}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e9/wikipedia-20051105.2.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20051105.2.png}}
 \caption{Matrice du web \textit{wikipedia-20051105}}
-\end{figure}
-
-\subsection{Avec le paramètre fixe $\epsilon = +1e-12$}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e12/wb-cs-stanford.png}}
-\caption{Matrice du web \textit{wb-cs-stanford}}
+\label{fig:ncd_alea-wikipedia-200511052}
 \end{figure}
 
 \begin{figure}[H]
     \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e12/wb-cs-stanford.2.png}}
-\caption{Matrice du web \textit{wb-cs-stanford}}
-\end{figure}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e12/wikipedia-20051105.png}}
-\caption{Matrice du web \textit{wikipedia-20051105}}
-\end{figure}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e12/wikipedia-20051105.2.png}}
-\caption{Matrice du web \textit{wikipedia-20051105}}
-\end{figure}
-
-\begin{figure}[H]
-    \makebox[\linewidth]{\centering
-    \includegraphics[scale=0.3]{/e12/wikipedia-20060925.png}}
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20060925.png}}
 \caption{Matrice du web \textit{wikipedia-20060925}}
+\label{fig:ncd_alea-wikipedia-20060925}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20060925.2.png}}
+\caption{Matrice du web \textit{wikipedia-20060925}}
+\label{fig:ncd_alea-wikipedia-200609252}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20070206.png}}
+\caption{Matrice du web \textit{wikipedia-20070206}}
+\label{fig:ncd_alea-wikipedia-20070206}
+\end{figure}
+
+\begin{figure}[H]
+    \makebox[\linewidth]{\centering
+    \includegraphics[scale=0.3]{/ncd_alea/wikipedia-20070206.2.png}}
+\caption{Matrice du web \textit{wikipedia-20070206}}
+\label{fig:ncd_alea-wikipedia-200702062}
 \end{figure}
 
 \end{appendices}
