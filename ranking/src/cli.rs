@@ -140,6 +140,9 @@ impl CLI {
         if cli.epsilon == 0.0 {
             return Err(CLIErr::Alpha("epsilon must be greater than 0.0".into()));
         }
+        if cli.group_count == 0 {
+            return Err(CLIErr::Alpha("group_count must be greater than 0".into()));
+        }
 
         Ok(cli)
     }
@@ -154,17 +157,19 @@ impl CLI {
 
                 if !cli.simulate {
                     match parse_file(&cli.matrix_path, market_parser, cli.alpha.end()) {
-                        Ok(matrix) => match matrix.stationary_distribution(cli.epsilon) {
-                            Ok((vec, steps)) => {
-                                println!("Sum of distribution = {}", vec.iter().sum::<f64>());
-                                println!("Step : {}", steps);
+                        Ok(matrix) => {
+                            match matrix.stationary_distribution(cli.epsilon, cli.group_count) {
+                                Ok((vec, steps)) => {
+                                    println!("Sum of distribution = {}", vec.iter().sum::<f64>());
+                                    println!("Step : {}", steps);
 
-                                if let Err(e) = matrix.dump(&cli.output_dir.join("save.mtx")) {
-                                    eprintln!("{}", e)
+                                    if let Err(e) = matrix.dump(&cli.output_dir.join("save.mtx")) {
+                                        eprintln!("{}", e)
+                                    }
                                 }
+                                Err(e) => eprintln!("{}", e),
                             }
-                            Err(e) => eprintln!("{}", e),
-                        },
+                        }
                         Err(e) => eprintln!("{}", e),
                     }
                 } else {
@@ -174,6 +179,7 @@ impl CLI {
                         cli.alpha,
                         cli.treshold,
                         cli.epsilon,
+                        cli.group_count,
                         &cli.matrix_path,
                         &cli.output_dir,
                         cli.load,

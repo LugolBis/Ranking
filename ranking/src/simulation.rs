@@ -124,6 +124,7 @@ pub fn simulation(
     mut alpha: Alpha,
     mut treshold: Threshold,
     epsilon: f64,
+    group_count: u64,
     matrix_path: &PathBuf,
     output_dir: &Path,
     load: bool,
@@ -161,7 +162,7 @@ pub fn simulation(
         while alpha.current <= alpha.end {
             matrix.set_alpha(alpha.current);
 
-            let (_, steps) = matrix.stationary_distribution(epsilon)?;
+            let (_, steps) = matrix.stationary_distribution(epsilon, group_count)?;
             writeln!(buffer, "{};{};{}", alpha.current, treshold.current, steps)?;
 
             alpha.increment();

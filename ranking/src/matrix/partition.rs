@@ -12,6 +12,10 @@ impl GroupParition {
     pub fn contains(&self, value: u64) -> bool {
         self.nodes.contains(&value)
     }
+
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
 }
 
 pub struct Partition {
@@ -50,6 +54,10 @@ impl Partition {
             }
         }
         fusioned_stationary_distribution
+    }
+
+    pub fn groups(&self) -> &Vec<GroupParition> {
+        &self.groups
     }
 }
 

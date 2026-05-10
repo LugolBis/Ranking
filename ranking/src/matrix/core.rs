@@ -6,7 +6,7 @@ use crate::{
     errors::CSCErr,
     maths::{compute_norm, uniform_vector},
     matrix::{
-        partition::GroupParition,
+        partition::{GroupParition, Partition},
         types::{Column, Value},
         utils::{compute_mult, get_f, get_surfer},
     },
@@ -141,12 +141,47 @@ impl CSC {
 
     /// Compute the stationary distribution with the `epsilon` parameter which define the target precision.<br>
     /// Note that it use the random surfer and `self.alpha` for computations.
-    pub fn stationary_distribution(&self, epsilon: f64) -> Result<(Vec<f64>, usize), CSCErr> {
+    pub fn stationary_distribution(
+        &self,
+        epsilon: f64,
+        group_count: u64,
+    ) -> Result<(Vec<f64>, usize), CSCErr> {
         if 1f64 - (1f64 - epsilon) == 0f64 {
             return Err(CSCErr::Epsilon(epsilon));
         }
 
-        let mut pi_even = uniform_vector(self.size as usize);
+        let mut step = 0usize;
+
+        let partition = Partition::new(self.size, group_count);
+        let mut stationary_distributions = Vec::new();
+
+        for group in partition.groups() {
+            let (stationary_distribution, steps) = self
+                .sub_matrix(group)
+                .stationary_distribution_from(epsilon, uniform_vector(self.size as usize))?;
+            step += steps;
+            stationary_distributions.push(stationary_distribution);
+        }
+
+        let stationary_distribution =
+            partition.fusion_stationary_distributions(stationary_distributions);
+        let (final_stationary_distribution, steps) =
+            self.stationary_distribution_from(epsilon, stationary_distribution)?;
+        step += steps;
+
+        Ok((final_stationary_distribution, step * 2))
+    }
+
+    fn stationary_distribution_from(
+        &self,
+        epsilon: f64,
+        pi: Vec<f64>,
+    ) -> Result<(Vec<f64>, usize), CSCErr> {
+        if 1f64 - (1f64 - epsilon) == 0f64 {
+            return Err(CSCErr::Epsilon(epsilon));
+        }
+
+        let mut pi_even = pi;
         let mut pi_odd: Vec<f64>;
         let n = 1f64 / self.size as f64;
         let csx = (1f64 - &self.alpha) * n;
@@ -171,14 +206,14 @@ impl CSC {
         Ok((pi_even, step * 2))
     }
 
-    pub fn sub_matrix(&self, group: GroupParition) -> CSC {
+    pub fn sub_matrix(&self, group: &GroupParition) -> CSC {
         let mut sub_matrix_columns = Vec::new();
-        let mut f = vec![1.0; self.columns.len()];
+        let mut f = vec![1.0; self.size as usize];
         for col in 0..self.columns.len() {
             if group.contains(col as u64)
                 && let Some(Some(column)) = self.columns.get(col)
             {
-                let sub_column = (*column).get_sub_column(&group);
+                let sub_column = (*column).get_sub_column(group);
                 for value in sub_column.rows.iter() {
                     f[value.get_row_index()] = 0.0;
                 }
