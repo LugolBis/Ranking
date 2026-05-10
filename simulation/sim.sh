@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATA_DIR="/home/lugolbis/Bureau/UVSQ/M1/S2/ranking/td_tests/Data"
+DATA_DIR="Data"
 CONF_FILE="conf.json"
 
 MAX_RETRIES=20
@@ -10,11 +10,12 @@ for file in "$DATA_DIR"/*.mtx; do
 
     echo "Traitement de $filename"
 
-    TARGET_DIR=$DATA_DIR/$filename
+    TARGET_DIR=$DATA_DIR/"$filename"Dir
 
     rm -R $TARGET_DIR 2> /dev/null
     mkdir $TARGET_DIR
-    sed -i "s|\"matrix_path\": \".*\"|\"matrix_path\": \"$TARGET_DIR\"|" "$CONF_FILE"
+    sed -i "s|\"matrix_path\": \".*\"|\"matrix_path\": \"$DATA_DIR/$filename\"|" "$CONF_FILE"
+    sed -i "s|\"output_dir\": \".*\"|\"output_dir\": \"$TARGET_DIR\"|" "$CONF_FILE"
 
     COUNT=0
 
@@ -22,7 +23,7 @@ for file in "$DATA_DIR"/*.mtx; do
         COUNT=$((COUNT + 1))
 
         if [ "$COUNT" -ge "$MAX_RETRIES" ]; then
-            echo "Échec pour $filename après $MAX_RETRIES tentatives."
+            echo "Failed for $filename after try $MAX_RETRIES."
             break
         fi
 
