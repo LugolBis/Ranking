@@ -51,6 +51,7 @@ impl CSC {
     }
 
     pub fn remove_edges(&self, treshold: f64, seed: u64) -> Result<CSC, CSCErr> {
+        let mut local_seed = seed;
         let nb_threads = &self.pool().num_workers();
         let (tx, rx) = unbounded();
 
@@ -73,10 +74,11 @@ impl CSC {
                 .pool()
                 .execute(move || {
                     filter_edges(
-                        tx_c, columns_c, treshold, chunk_id, start, end, total_len, seed,
+                        tx_c, columns_c, treshold, chunk_id, start, end, total_len, local_seed,
                     )
                 })
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
+            local_seed += 1;
         }
         drop(tx);
 
