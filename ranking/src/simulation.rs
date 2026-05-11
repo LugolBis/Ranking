@@ -6,7 +6,10 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::parser::{api::parse_file, market::market_parser};
+use crate::{
+    matrix::partition::Partition,
+    parser::{api::parse_file, market::market_parser},
+};
 
 const HEADER: &str = "alpha;percent_of_edges_removed;stationnary_distrib_converge_time";
 
@@ -143,6 +146,7 @@ pub fn simulation(
     let mut matrix = parse_file(matrix_path, market_parser, 0f64)?;
     let mut prev_threshold = 0f64;
     let mut counter = 0u64;
+    let mut partition = Partition::new(matrix.size(), group_count);
 
     while treshold.current <= treshold.end {
         // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_treshold`
@@ -153,7 +157,7 @@ pub fn simulation(
             if load {
                 matrix = parse_file(path, market_parser, 0f64)?;
             } else {
-                matrix = matrix.remove_edges(q_tresh, seed)?;
+                (matrix, partition) = matrix.remove_edges(partition, seed)?;
                 matrix.dump(path)?;
             }
         }
@@ -162,7 +166,7 @@ pub fn simulation(
         while alpha.current <= alpha.end {
             matrix.set_alpha(alpha.current);
 
-            let (_, steps) = matrix.stationary_distribution(epsilon, group_count)?;
+            let (_, steps) = matrix.stationary_distribution(&partition, epsilon)?;
             writeln!(buffer, "{};{};{}", alpha.current, treshold.current, steps)?;
 
             alpha.increment();

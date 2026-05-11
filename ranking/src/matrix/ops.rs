@@ -10,7 +10,7 @@ use crossbeam_channel::unbounded;
 
 use crate::{
     errors::CSCErr,
-    matrix::{core::CSC, types::Value, utils::filter_edges},
+    matrix::{core::CSC, partition::Partition, types::Value, utils::filter_edges},
 };
 
 impl CSC {
@@ -50,7 +50,11 @@ impl CSC {
         Ok(())
     }
 
-    pub fn remove_edges(&self, treshold: f64, seed: u64) -> Result<CSC, CSCErr> {
+    pub fn remove_edges(
+        &self,
+        partition: Partition,
+        seed: u64,
+    ) -> Result<(CSC, Partition), CSCErr> {
         let mut local_seed = seed;
         let nb_threads = &self.pool().num_workers();
         let (tx, rx) = unbounded();
@@ -59,6 +63,7 @@ impl CSC {
         let chunk_size = (total_len / (nb_threads * 2)) + 1;
 
         let columns = Arc::new(self.columns().clone());
+        let partition_ref = Arc::new(partition);
 
         for chunk_id in 0..nb_threads * 2 {
             let start = chunk_id * chunk_size;
@@ -69,6 +74,7 @@ impl CSC {
 
             let tx_c = tx.clone();
             let columns_c = Arc::clone(&columns);
+            let partition_ref_c = partition_ref.clone();
 
             let _ = &self
                 .pool()
@@ -76,7 +82,7 @@ impl CSC {
                     filter_edges(
                         tx_c,
                         columns_c,
-                        treshold,
+                        partition_ref_c,
                         chunk_id,
                         start,
                         end,
@@ -116,6 +122,9 @@ impl CSC {
             })
             .collect();
 
-        CSC::from(self.size(), renormalized, rows_count, self.alpha())
+        Ok((
+            CSC::from(self.size(), renormalized, rows_count, self.alpha())?,
+            Arc::try_unwrap(partition_ref).unwrap(),
+        ))
     }
 }

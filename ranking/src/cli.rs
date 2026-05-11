@@ -1,4 +1,5 @@
 use crate::errors::CLIErr;
+use crate::matrix::partition::Partition;
 use crate::parser::{api::parse_file, market::market_parser};
 use crate::simulation::{Alpha, Threshold, simulation};
 use std::path::PathBuf;
@@ -158,7 +159,8 @@ impl CLI {
                 if !cli.simulate {
                     match parse_file(&cli.matrix_path, market_parser, cli.alpha.end()) {
                         Ok(matrix) => {
-                            match matrix.stationary_distribution(cli.epsilon, cli.group_count) {
+                            let partition = Partition::new(matrix.size(), cli.group_count);
+                            match matrix.stationary_distribution(&partition, cli.epsilon) {
                                 Ok((vec, steps)) => {
                                     println!("Sum of distribution = {}", vec.iter().sum::<f64>());
                                     println!("Step : {}", steps);

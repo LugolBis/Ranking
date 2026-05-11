@@ -3,7 +3,11 @@ use std::{collections::LinkedList, sync::Arc};
 use crate::{
     errors::{CSCErr, RefErr},
     maths::RngSeq,
-    matrix::{core::RefCol, partition::GroupPartition, types::Value},
+    matrix::{
+        core::RefCol,
+        partition::{GroupPartition, Partition},
+        types::Value,
+    },
 };
 use crossbeam_channel::Sender;
 
@@ -36,11 +40,15 @@ pub fn compute_mult(
     Ok(())
 }
 
+fn normalize(value: f64) -> f64 {
+    1.0 / (1.0 + (-(8.0 * value - 3.0)).exp())
+}
+
 /// Remove edges of the matrix based on the `treshold` in input.
 pub fn filter_edges(
     tx_c: Sender<(usize, Vec<Option<LinkedList<Value>>>, Vec<u64>)>,
     columns_c: Arc<Vec<Option<RefCol>>>,
-    treshold: f64,
+    partition: Arc<Partition>,
     chunk_id: usize,
     start: usize,
     end: usize,
@@ -56,8 +64,16 @@ pub fn filter_edges(
             let column_filtered = column
                 .rows
                 .iter()
-                .filter(|_| rdseq.next() >= treshold)
+                .filter(|row| {
+                    rdseq.next() >= normalize(row.get_value())
+                        && partition.group_containing(col_idx.try_into().unwrap())
+                            != partition.group_containing(row.get_row_index().try_into().unwrap())
+                })
                 .collect::<LinkedList<Value>>();
+
+            if column_filtered.len() == column.rows.len() {
+                println!("No changes here !");
+            }
 
             if !column_filtered.is_empty() {
                 for value in column_filtered.iter() {

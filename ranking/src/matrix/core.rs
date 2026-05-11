@@ -167,8 +167,8 @@ impl CSC {
     /// Note that it use the random surfer and `self.alpha` for computations.
     pub fn stationary_distribution(
         &self,
+        partition: &Partition,
         epsilon: f64,
-        group_count: u64,
     ) -> Result<(Vec<f64>, usize), CSCErr> {
         if 1f64 - (1f64 - epsilon) == 0f64 {
             return Err(CSCErr::Epsilon(epsilon));
@@ -176,7 +176,6 @@ impl CSC {
 
         let mut step = 0usize;
 
-        let partition = Partition::new(self.size, group_count);
         let mut stationary_distributions = Vec::new();
 
         for group in partition.groups().iter() {

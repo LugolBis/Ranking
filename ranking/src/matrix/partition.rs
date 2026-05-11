@@ -4,7 +4,7 @@ use crate::maths::RngSeq;
 
 const PARTITION_SEED: u64 = 42;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GroupPartition {
     nodes: HashMap<u64, usize>,
 }
@@ -27,6 +27,7 @@ impl GroupPartition {
     }
 }
 
+#[derive(Debug)]
 pub struct Partition {
     groups: Vec<GroupPartition>,
 }
@@ -68,6 +69,15 @@ impl Partition {
 
     pub fn groups(&self) -> &Vec<GroupPartition> {
         &self.groups
+    }
+
+    pub fn group_containing(&self, value: u64) -> Option<usize> {
+        for (i, group) in self.groups.iter().enumerate() {
+            if group.contains(value) {
+                return Some(i);
+            }
+        }
+        None
     }
 }
 
