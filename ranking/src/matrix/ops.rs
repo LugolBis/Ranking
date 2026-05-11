@@ -73,7 +73,14 @@ impl CSC {
                 .pool()
                 .execute(move || {
                     filter_edges(
-                        tx_c, columns_c, treshold, chunk_id, start, end, total_len, seed,
+                        tx_c,
+                        columns_c,
+                        treshold,
+                        chunk_id,
+                        start,
+                        end,
+                        total_len,
+                        seed + 1,
                     )
                 })
                 .map_err(|e| CSCErr::Thread(format!("Thread Pool error : {}", e)))?;
