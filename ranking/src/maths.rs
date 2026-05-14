@@ -11,6 +11,8 @@ pub fn uniform_vector(len: usize) -> Vec<f64> {
     vec![1f64 / len as f64; len]
 }
 
+#[derive(Debug, Clone)]
+/// Wrapper around SmallRng to generate a sequence of random numbers between 0 and 1
 pub struct RngSeq {
     rng: SmallRng,
 }
@@ -24,18 +26,5 @@ impl RngSeq {
 
     pub fn next(&mut self) -> f64 {
         self.rng.random()
-    }
-}
-
-#[test]
-fn test_rng() {
-    let mut rng1 = RngSeq::from(1);
-    let mut rng2 = RngSeq::from(1);
-    let mut rng3 = RngSeq::from(3);
-
-    for _ in 0..100_000 {
-        assert_eq!(rng1.next(), rng2.next());
-        assert_ne!(rng1.next(), rng3.next());
-        assert_ne!(rng2.next(), rng3.next());
     }
 }

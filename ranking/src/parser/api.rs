@@ -26,7 +26,6 @@ impl Parsed {
 }
 
 /// Provide a generic API to unify matrix file format and their implementation.
-/// The treshold permit to controll the percent of edges who will be removed, to remove 20% the treashold need to be 0.2 for example.
 pub fn parse_file<F>(path: &PathBuf, fn_parse: F, alpha: f64) -> Result<CSC, ParseErr>
 where
     F: Fn(&mut dyn Iterator<Item = String>) -> Result<(u64, Vec<Parsed>, Vec<u64>), ParseErr>,

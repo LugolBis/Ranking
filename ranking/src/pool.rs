@@ -20,7 +20,7 @@ pub struct Worker {
     error: Option<String>,
 }
 
-/// Represent a job that a `Work` need to do.
+/// Represent a job that a `Worker` need to do.
 pub enum Job {
     Task(Box<dyn FnOnce() -> Result<(), RefErr> + Send + 'static>),
     Shutdown,

@@ -6,7 +6,11 @@ use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
+/// Precision used to round the percent of edges removed in the legend
+const PERCENT_PRECISION: f64 = 1000f64;
+
 #[derive(Debug, Deserialize)]
+/// Represent the record of the simulation
 struct Record {
     alpha: f64,
     #[serde(rename = "percent_of_edges_removed")]
@@ -33,7 +37,7 @@ pub fn generate(
     for result in reader.deserialize() {
         let record: Record = result?;
         data_per_edge
-            .entry((record.edge_removed * 1000f64).floor() as u64)
+            .entry((record.edge_removed * PERCENT_PRECISION).floor() as u64)
             .or_insert_with(Vec::new)
             .push((record.alpha, record.time));
     }
