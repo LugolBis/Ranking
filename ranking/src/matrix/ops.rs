@@ -115,7 +115,7 @@ impl CSC {
                         .map(|v| {
                             let row_idx = v.get_row_index();
                             let count = rows_count[row_idx];
-                            Value::from(if count == 0 { 0.0 } else { 1.0 / count as f64 }, row_idx)
+                            Value::from(1.0 / count as f64, row_idx)
                         })
                         .collect::<LinkedList<Value>>()
                 })
