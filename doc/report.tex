@@ -56,6 +56,14 @@ En effet pour induire une matrice NCD de la matrice initiale nous retirons des a
 \\
 De plus on observe que la divergeance du temps de convergeance de $\pi$ entre les différentes matrices s'acroît lorsque $\alpha$ augmente, car $\alpha$ acroît la probabilité des arcs induits de la supression d'un arc appartenant à une composante connexe isolé; ce qui augmente la variabilité de $\pi$ et donc intrinsèquement du temps de convergeance de $\pi$.
 
+\subsection{Proposition d'une autre construction de matrice NCD}
+
+Bien que très simple, supprimer des arcs aléatoirement ne permet pas de profiter des propriétés d'une matrice NCD, car on ne connait pas la partition du graphe.
+Afin de pouvoir profiter de la structure de la matrice NCD, nous avons donc essayé un autre algorithme de suppression des arcs.
+Pour ce faire, nous avons commencé par créer une partition aléatoire puis supprimer les arcs uniquement entre les groupes de la partition.
+Pour chaque arc entre deux groupes, on le retire avec une probabilité $\frac{1}{1+e^{-(8x-3)}}$ avec x le poids de l'arc.
+Cette fonction suit une sigmoïde choisie arbitrairement pour rapprocher de 1 la probabilité de retirer un arc si son poids est supérieur à 0.5.
+
 \newpage
 
 \begin{appendices}
