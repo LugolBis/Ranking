@@ -66,8 +66,8 @@ pub fn filter_edges(
                 .iter()
                 .filter(|row| {
                     rdseq.next() >= normalize(row.get_value())
-                        && partition.group_containing(col_idx.try_into().unwrap())
-                            != partition.group_containing(row.get_row_index().try_into().unwrap())
+                        || partition.group_containing(col_idx.try_into().unwrap())
+                            == partition.group_containing(row.get_row_index().try_into().unwrap())
                 })
                 .collect::<LinkedList<Value>>();
 

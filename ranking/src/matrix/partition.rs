@@ -51,7 +51,7 @@ impl Partition {
 
     pub fn fusion_stationary_distributions(
         &self,
-        stationary_distributions: Vec<Vec<f64>>,
+        stationary_distributions: &Vec<Vec<f64>>,
     ) -> Vec<f64> {
         let mut node_count = 0;
         for group in self.groups.iter() {
@@ -65,6 +65,22 @@ impl Partition {
             }
         }
         fusioned_stationary_distribution
+    }
+
+    pub fn divide_stationary_distribution(
+        &self,
+        stationary_distribution: &Vec<f64>,
+    ) -> Vec<Vec<f64>> {
+        let mut stationary_distributions = Vec::new();
+        for group in self.groups.iter() {
+            let mut new_stationary_distribution = vec![0.0; group.len()];
+            for (column_index, position) in group.nodes.iter() {
+                new_stationary_distribution[*position] =
+                    stationary_distribution[TryInto::<usize>::try_into(*column_index).unwrap()];
+            }
+            stationary_distributions.push(new_stationary_distribution);
+        }
+        stationary_distributions
     }
 
     pub fn groups(&self) -> &Vec<GroupPartition> {
@@ -121,8 +137,20 @@ mod tests {
             ],
         };
         assert_eq!(
-            partition.fusion_stationary_distributions(distributions),
+            partition.fusion_stationary_distributions(&distributions),
             vec![0.1, 0.2, 0.3, 0.4]
         );
+    }
+
+    #[test]
+    fn divide_distributions() {
+        let partition = Partition::new(4, 2);
+        let distribution: Vec<f64> = vec![0.1, 0.3, 0.2, 0.4];
+        assert_eq!(
+            distribution,
+            partition.fusion_stationary_distributions(
+                &partition.divide_stationary_distribution(&distribution)
+            )
+        )
     }
 }

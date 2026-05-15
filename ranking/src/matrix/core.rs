@@ -175,64 +175,48 @@ impl CSC {
         }
 
         let mut step = 0usize;
+        let mut norm = 1.0;
 
-        let mut stationary_distributions = Vec::new();
+        let mut pi = uniform_vector(self.size as usize);
+        let mut previous_pi: Vec<f64>;
 
+        let mut sub_matrices = Vec::new();
         for group in partition.groups().iter() {
-            let (stationary_distribution, steps) = self
-                .sub_matrix(group)?
-                .stationary_distribution_from(group, epsilon, uniform_vector(group.len()))?;
-            step += steps;
-            stationary_distributions.push(stationary_distribution);
+            sub_matrices.push(self.sub_matrix(group)?);
         }
 
-        let stationary_distribution =
-            partition.fusion_stationary_distributions(stationary_distributions);
         let mut values = HashMap::new();
         for index in 0..self.size {
             values.insert(index, index as usize);
         }
-        let group = GroupPartition::new(values);
-        let (final_stationary_distribution, steps) =
-            self.stationary_distribution_from(&group, epsilon, stationary_distribution)?;
-        step += steps;
+        let full_group = GroupPartition::new(values);
 
-        Ok((final_stationary_distribution, step * 2))
-    }
-
-    fn stationary_distribution_from(
-        &self,
-        group: &GroupPartition,
-        epsilon: f64,
-        pi: Vec<f64>,
-    ) -> Result<(Vec<f64>, usize), CSCErr> {
-        if 1f64 - (1f64 - epsilon) == 0f64 {
-            return Err(CSCErr::Epsilon(epsilon));
-        }
-
-        let mut pi_even = pi;
-        let mut pi_odd: Vec<f64>;
         let n = 1f64 / self.size as f64;
         let csx = (1f64 - &self.alpha) * n;
         let csy = self.alpha * n;
 
-        let mut step = 0usize;
-        let mut need_check = false;
-        let mut norm = 1.0;
-
-        while norm > epsilon {
-            pi_odd = self.mult_vec(group.clone(), &pi_even, csx, csy)?;
-            pi_even = self.mult_vec(group.clone(), &pi_odd, csx, csy)?;
-
-            if need_check {
-                norm = compute_norm(&pi_even, &pi_odd);
+        let mut stationary_distributions = partition.divide_stationary_distribution(&pi);
+        for (group_index, sub_matrix) in sub_matrices.iter().enumerate() {
+            for _ in 0..4 {
+                stationary_distributions[group_index] = sub_matrix.mult_vec(
+                    partition.groups()[group_index].clone(),
+                    &stationary_distributions[group_index],
+                    csx,
+                    csy,
+                )?;
+                step += 1;
             }
-
-            need_check = !need_check;
-            step += 1;
         }
 
-        Ok((pi_even, step * 2))
+        pi = partition.fusion_stationary_distributions(&stationary_distributions);
+
+        while norm > epsilon {
+            previous_pi = pi.clone();
+            pi = self.mult_vec(full_group.clone(), &pi, csx, csy)?;
+            step += 1;
+            norm = compute_norm(&pi, &previous_pi);
+        }
+        Ok((pi, step))
     }
 
     pub fn sub_matrix(&self, group: &GroupPartition) -> Result<CSC, CSCErr> {
