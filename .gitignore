@@ -1,5 +1,6 @@
 /target
 /Data
+/output
 .env
 *.svg
 *.data

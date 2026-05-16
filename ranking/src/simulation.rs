@@ -11,7 +11,8 @@ use crate::{
     parser::{api::parse_file, market::market_parser},
 };
 
-const HEADER: &str = "alpha;percent_of_edges_removed;stationnary_distrib_converge_time";
+const HEADER: &str =
+    "alpha;percent_of_edges_removed;stationnary_distrib_converge_time;diff;group_count";
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Alpha {
@@ -37,6 +38,18 @@ pub struct Threshold {
     current: f64,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct GroupCount {
+    #[serde(default)]
+    start: u64,
+    #[serde(default)]
+    end: u64,
+    #[serde(default)]
+    step: u64,
+    #[serde(default)]
+    current: u64,
+}
+
 impl Default for Alpha {
     fn default() -> Self {
         Alpha {
@@ -55,6 +68,17 @@ impl Default for Threshold {
             end: 0.20,
             step: 0.01,
             current: 0.0,
+        }
+    }
+}
+
+impl Default for GroupCount {
+    fn default() -> Self {
+        GroupCount {
+            start: 2,
+            end: 1000,
+            step: 1,
+            current: 2,
         }
     }
 }
@@ -107,6 +131,30 @@ impl Threshold {
     }
 }
 
+impl GroupCount {
+    pub fn from(start: u64, end: u64, step: u64) -> GroupCount {
+        GroupCount {
+            start,
+            end,
+            step,
+            current: start,
+        }
+    }
+    pub fn start(&self) -> u64 {
+        self.start
+    }
+    pub fn end(&self) -> u64 {
+        self.end
+    }
+    pub fn step(&self) -> u64 {
+        self.step
+    }
+
+    fn increment(&mut self) {
+        self.current += self.step;
+    }
+}
+
 /// What do we simulate ?<br>
 /// We simulate the evolution of stationary distribution convergence time according to the parameters `alpha` and
 ///  `treshold` who's the percent of edges removed.
@@ -127,7 +175,7 @@ pub fn simulation(
     mut alpha: Alpha,
     mut treshold: Threshold,
     epsilon: f64,
-    group_count: u64,
+    mut group_count: GroupCount,
     matrix_path: &PathBuf,
     output_dir: &Path,
     load: bool,
@@ -146,42 +194,50 @@ pub fn simulation(
     let mut matrix = parse_file(matrix_path, market_parser, 0f64)?;
     let mut prev_threshold = 0f64;
     let mut counter = 0u64;
-    let mut partition = Partition::new(matrix.size(), group_count);
+    group_count.current = group_count.start;
+    while group_count.current <= group_count.end {
+        let mut partition = Partition::new(matrix.size(), group_count.current);
 
-    while treshold.current <= treshold.end {
-        // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_treshold`
-        let q_tresh = (treshold.current - prev_threshold) / (1f64 - prev_threshold);
+        while treshold.current <= treshold.end {
+            // We calculate `q_tresh` the treshold to remove more edges based on the previous treshold : `prev_treshold`
+            let q_tresh = (treshold.current - prev_threshold) / (1f64 - prev_threshold);
 
-        if q_tresh > 0f64 {
-            let path = &output_dir.join(format!("{}.mtx", treshold.current));
-            if load {
-                matrix = parse_file(path, market_parser, 0f64)?;
-            } else {
-                (matrix, partition) = matrix.remove_edges(partition, seed)?;
-                matrix.dump(path)?;
+            if q_tresh > 0f64 {
+                let path = &output_dir.join(format!("{}.mtx", treshold.current));
+                if load {
+                    matrix = parse_file(path, market_parser, 0f64)?;
+                } else {
+                    (matrix, partition) = matrix.remove_edges(partition, seed)?;
+                    matrix.dump(path)?;
+                }
             }
+
+            alpha.current = alpha.start;
+            while alpha.current <= alpha.end {
+                matrix.set_alpha(alpha.current);
+
+                let (_, steps, diff) = matrix.stationary_distribution(&partition, epsilon)?;
+                writeln!(
+                    buffer,
+                    "{};{};{};{};{}",
+                    alpha.current, treshold.current, steps, diff, group_count.current
+                )?;
+
+                alpha.increment();
+
+                counter += 1;
+                print!(
+                    "\r[Simulation : {}%]",
+                    ((counter as f64) / (iterations as f64) * 100f64).round()
+                );
+                let _ = io::stdout().flush();
+            }
+
+            // We update the previous treshold with the current one
+            prev_threshold = treshold.current;
+            treshold.increment();
         }
-
-        alpha.current = alpha.start;
-        while alpha.current <= alpha.end {
-            matrix.set_alpha(alpha.current);
-
-            let (_, steps) = matrix.stationary_distribution(&partition, epsilon)?;
-            writeln!(buffer, "{};{};{}", alpha.current, treshold.current, steps)?;
-
-            alpha.increment();
-
-            counter += 1;
-            print!(
-                "\r[Simulation : {}%]",
-                ((counter as f64) / (iterations as f64) * 100f64).round()
-            );
-            let _ = io::stdout().flush();
-        }
-
-        // We update the previous treshold with the current one
-        prev_threshold = treshold.current;
-        treshold.increment();
+        group_count.increment();
     }
 
     print!("\r[Simulation : 100%]");

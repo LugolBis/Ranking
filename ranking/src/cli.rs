@@ -1,7 +1,7 @@
 use crate::errors::CLIErr;
 use crate::matrix::partition::Partition;
 use crate::parser::{api::parse_file, market::market_parser};
-use crate::simulation::{Alpha, Threshold, simulation};
+use crate::simulation::{Alpha, GroupCount, Threshold, simulation};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub struct CLI {
     #[serde(default)]
     seed: u64,
     #[serde(default)]
-    group_count: u64,
+    group_count: GroupCount,
 }
 
 const HELP: &str = r#"
@@ -49,11 +49,15 @@ const HELP: &str = r#"
             "end": 0.20,
             "step": 0.001
         },
+        "group_count": {
+            "start": 2,
+            "end": 1000,
+            "step": 1
+        }
         "epsilon": 1e-6,
         "matrix_path": "/path/to/your/matrix.mtx",
         "output_dir": "/etc/path/to/your/simulation_output_dir/",
         "seed": 42,
-        "group_count": 40
     }
 "#;
 
@@ -70,7 +74,7 @@ impl Default for CLI {
             simulate: false,
             load: false,
             seed: 42,
-            group_count: 1,
+            group_count: GroupCount::default(),
         }
     }
 }
@@ -141,7 +145,7 @@ impl CLI {
         if cli.epsilon == 0.0 {
             return Err(CLIErr::Alpha("epsilon must be greater than 0.0".into()));
         }
-        if cli.group_count == 0 {
+        if cli.group_count.start() == 0 {
             return Err(CLIErr::Alpha("group_count must be greater than 0".into()));
         }
 
@@ -159,9 +163,9 @@ impl CLI {
                 if !cli.simulate {
                     match parse_file(&cli.matrix_path, market_parser, cli.alpha.end()) {
                         Ok(matrix) => {
-                            let partition = Partition::new(matrix.size(), cli.group_count);
+                            let partition = Partition::new(matrix.size(), cli.group_count.start());
                             match matrix.stationary_distribution(&partition, cli.epsilon) {
-                                Ok((vec, steps)) => {
+                                Ok((vec, steps, _)) => {
                                     println!("Sum of distribution = {}", vec.iter().sum::<f64>());
                                     println!("Step : {}", steps);
 

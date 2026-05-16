@@ -103,7 +103,7 @@ impl CSC {
         pi: &[f64],
         csx: f64,
         csy: f64,
-    ) -> Result<Vec<f64>, CSCErr> {
+    ) -> Result<(Vec<f64>, u64), CSCErr> {
         if self.size as usize != pi.len() {
             return Err(CSCErr::ShapeVec(self.size as usize, pi.len()));
         }
@@ -151,16 +151,21 @@ impl CSC {
         drop(tx);
 
         let mut result = vec![Vec::new(); nb_threads * 2];
-        for (chunk_id, chunk) in rx.iter() {
+        let mut total_steps = 0;
+        for (chunk_id, chunk, steps) in rx.iter() {
             result[chunk_id] = chunk;
+            total_steps += steps;
         }
 
-        Ok(result
-            .into_iter()
-            .flatten()
-            .zip(get_surfer(csx, csy, self.size, pi, &self.f[..]))
-            .map(|(x, y)| x + y)
-            .collect())
+        Ok((
+            result
+                .into_iter()
+                .flatten()
+                .zip(get_surfer(csx, csy, self.size, pi, &self.f[..]))
+                .map(|(x, y)| x + y)
+                .collect(),
+            total_steps,
+        ))
     }
 
     /// Compute the stationary distribution with the `epsilon` parameter which define the target precision.<br>
@@ -169,16 +174,17 @@ impl CSC {
         &self,
         partition: &Partition,
         epsilon: f64,
-    ) -> Result<(Vec<f64>, usize), CSCErr> {
+    ) -> Result<(Vec<f64>, u64, f64), CSCErr> {
         if 1f64 - (1f64 - epsilon) == 0f64 {
             return Err(CSCErr::Epsilon(epsilon));
         }
 
-        let mut step = 0usize;
+        let mut step = 0;
+        let mut new_steps: u64;
         let mut norm = 1.0;
 
         let mut pi = uniform_vector(self.size as usize);
-        let mut previous_pi: Vec<f64>;
+        let mut previous_pi = pi.clone();
 
         let mut sub_matrices = Vec::new();
         for group in partition.groups().iter() {
@@ -195,28 +201,39 @@ impl CSC {
         let csx = (1f64 - &self.alpha) * n;
         let csy = self.alpha * n;
 
-        let mut stationary_distributions = partition.divide_stationary_distribution(&pi);
-        for (group_index, sub_matrix) in sub_matrices.iter().enumerate() {
-            for _ in 0..4 {
-                stationary_distributions[group_index] = sub_matrix.mult_vec(
-                    partition.groups()[group_index].clone(),
-                    &stationary_distributions[group_index],
-                    csx,
-                    csy,
-                )?;
-                step += 1;
+        while norm > epsilon {
+            let mut stationary_distributions = partition.divide_stationary_distribution(&pi);
+            for (group_index, sub_matrix) in sub_matrices.iter().enumerate() {
+                for _ in 0..3 {
+                    (stationary_distributions[group_index], new_steps) = sub_matrix.mult_vec(
+                        partition.groups()[group_index].clone(),
+                        &stationary_distributions[group_index],
+                        csx,
+                        csy,
+                    )?;
+                    step += new_steps;
+                }
             }
+
+            pi = partition.fusion_stationary_distributions(&stationary_distributions);
+
+            (pi, new_steps) = self.mult_vec(full_group.clone(), &pi, csx, csy)?;
+            step += new_steps;
+            norm = compute_norm(&pi, &previous_pi);
+            previous_pi = pi.clone();
         }
 
-        pi = partition.fusion_stationary_distributions(&stationary_distributions);
+        norm = 1.0;
+        let approximated_pi = pi.clone();
 
         while norm > epsilon {
-            previous_pi = pi.clone();
-            pi = self.mult_vec(full_group.clone(), &pi, csx, csy)?;
-            step += 1;
+            (pi, _) = self.mult_vec(full_group.clone(), &pi, csx, csy)?;
+            // step += new_steps;
             norm = compute_norm(&pi, &previous_pi);
+            previous_pi = pi.clone();
         }
-        Ok((pi, step))
+
+        Ok((pi, step, compute_norm(&approximated_pi, &previous_pi)))
     }
 
     pub fn sub_matrix(&self, group: &GroupPartition) -> Result<CSC, CSCErr> {

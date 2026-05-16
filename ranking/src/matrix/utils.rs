@@ -13,7 +13,7 @@ use crossbeam_channel::Sender;
 
 /// Compute the multiplication between `pi` and few columns of the matrix.
 pub fn compute_mult(
-    tx_c: Sender<(usize, Vec<f64>)>,
+    tx_c: Sender<(usize, Vec<f64>, u64)>,
     pi_c: Arc<Vec<f64>>,
     columns_c: Arc<Vec<Option<RefCol>>>,
     group: Arc<GroupPartition>,
@@ -23,6 +23,7 @@ pub fn compute_mult(
     end: usize,
 ) -> Result<(), RefErr> {
     let mut local_vec = vec![0.0; end - start];
+    let mut steps = 0;
 
     for (col_idx, opt) in columns_c[start..end].iter().enumerate() {
         if let Some(column) = opt {
@@ -32,10 +33,11 @@ pub fn compute_mult(
                     * pi_c[group.index(value.get_row_index().try_into().unwrap())]
                     * value.get_value();
             }
+            steps += column.rows.len() as u64;
             local_vec[col_idx] = local;
         }
     }
-    tx_c.send((chunk_id, local_vec))
+    tx_c.send((chunk_id, local_vec, steps))
         .map_err(|_| Box::new(CSCErr::SendErr) as RefErr)?;
     Ok(())
 }
@@ -71,9 +73,11 @@ pub fn filter_edges(
                 })
                 .collect::<LinkedList<Value>>();
 
+            /*
             if column_filtered.len() == column.rows.len() {
                 println!("No changes here !");
             }
+            */
 
             if !column_filtered.is_empty() {
                 for value in column_filtered.iter() {
