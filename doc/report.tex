@@ -3,6 +3,7 @@
 \usepackage[french]{babel}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{lmodern}
 \usepackage{fancyhdr}
 \usepackage{amsmath}
 \usepackage{multirow}
@@ -20,10 +21,7 @@
 \renewcommand{\appendixpagename}{Annexes}
 \renewcommand{\appendixtocname}{Annexes}
 \usepackage{subcaption}
-
-\usepackage[utf8]{inputenc}
 \usepackage[table,xcdraw]{xcolor}
-
 \usepackage{graphicx}
 \graphicspath{{../simulation/}}
 
@@ -31,15 +29,43 @@
 \author{Loïc Desmarès & Baptiste Boisserie}
 \date{Mai 2026}
 
+\geometry{
+    top=3cm,
+    bottom=3cm,
+    left=3cm,
+    right=3cm
+}
+
 \begin{document}
 
-\maketitle
+\begin{titlepage}
+    \centering
+    \vspace*{4cm}
+    {\Huge \textbf{Optimisation de la convergence de PageRank avec les matrices NCD} \par}
+
+    \vspace{3cm}
+    {\Large Projet de Ranking -- M1 Informatique \par}
+
+    \vspace{0.3cm}
+    {\large Optimisation de la convergence de PageRank avec les matrices NCD \par}
+    
+    \vspace{8cm}
+    {\Large Auteur : \textbf{Loïc Desmarès} et \textbf{Baptiste Boisserie} \par}
+
+    \vspace{1cm}
+    {\large Université Paris-Saclay -- UVSQ \par}
+
+    \vspace{0.3cm}
+    {\large Année universitaire 2025--2026 \par}
+\end{titlepage}
+
+\newpage
 \tableofcontents
 
 \newpage
 \section{Objectif et présentation des matrices NCD appliquées à Pagerank}
 
-L'objectif de notre projet est d'étudier le temps de convergence de la distribution stationnaire selon $\alpha$ pour une matrice \textbf{NCD} induite d'un graphe du WEB. Une matrice \textbf{NCD} est une \textbf{chaîne de Markov} pour laquelle l'espace d'état peut être partitionné afin que les probabilités de transition entre deux sommets de la même partition, soit plus fréquente que celle entre deux sommets de partitions distinctes.\\
+L'objectif de notre projet est d'étudier le temps de convergence de la distribution stationnaire selon $\alpha$ pour une matrice \textbf{NCD} induite d'un graphe du WEB. Une matrice \textbf{NCD} est une \textbf{chaîne de Markov} pour laquelle l'espace d'état peut être partitionné afin que les probabilités de transition entre deux sommets du même groupe, soit plus fréquente que celle entre deux sommets de groupes distincts.\\
 De plus on rappelle la formule du graphe du web noté $G$ : $G = \alpha P + \alpha (\frac{1}{N}) f e^t + (1-\alpha)(\frac{1}{N})e e^t$\\
 sachant $P$ une matrice de taille $N \times N$ qui est la chaîne de Markov modélisant la pertinence des pages web, $f$ un vecteur colonne modélisnat les lignes vides dans $P$, $e$ un vecteur colonne ne contenant que des 1 et $\alpha$ la probabilité que le surfer aléatoire clique sur une page aléatoirement ($\alpha = 0.85$ dans Pagerank initial). Enfin on rappelle que la probabilité stationnaire noté $\pi$ est un vecteur ligne tel que $\pi G = \pi$ et $\pi e = 1$.
 
@@ -47,22 +73,29 @@ sachant $P$ une matrice de taille $N \times N$ qui est la chaîne de Markov mod�
 
 \subsection{Construction de la matrice NCD}
 
-Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer aléatoirement des arcs du graphe du web afin de créer des partitions. Pour simuler l'évolution du temps de convergence de la distribution stationnaire selon alpha et le poucentage d'arcs supprimé nous avons élaboré une simulation qui garde en mémoire les arcs retirés. Cela signifie donc que nous retirons $10\%$ des arcs de la matrice de départ, puis nous retirons $10\%$ suplémentaire à la matrice induite en tenant compte du pourcentage d'arcs déjà retiré. Nous obtenons donc trois matrice, la matrice initiale, la matrice NCD induite avec $10\%$ d'arcs supprimé et celle induite avec en plus $10\%$ d'arcs en moins.
+Une première méthode pour obtenir une matrice \textbf{NCD} consiste à retirer aléatoirement des arcs du graphe du web afin de créer une partition de celui-ci. Pour simuler l'évolution du temps de convergence de la distribution stationnaire selon alpha et le poucentage d'arcs supprimé nous avons élaboré une simulation qui garde en mémoire les arcs retirés. Cela signifie donc que nous retirons $10\%$ des arcs de la matrice de départ, puis nous retirons $10\%$ suplémentaire à la matrice induite en tenant compte du pourcentage d'arcs déjà retiré. Nous obtenons donc trois matrice, la matrice initiale, la matrice NCD induite avec $10\%$ d'arcs supprimé et celle induite avec en plus $10\%$ d'arcs en moins.
 
 \subsection{Résultats}
-Les resultats observés pour les figures \ref{fig:ncd_alea-nv2}, \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-cs-stanford2}, \ref{fig:ncd_alea-wikipedia-20051105}, \ref{fig:ncd_alea-wikipedia-20070206} et \ref{fig:ncd_alea-wikipedia-200702062} démontrent que retirer aléatoirement des arcs ne réduit pas toujours le temps de convergeance de la distribution stationaire mais peut l'augmenter. Tandis que les figures \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-edu}, \ref{fig:ncd_alea-wikipedia-20060925}, \ref{fig:ncd_alea-wikipedia-200609252} et \ref{fig:ncd_alea-wikipedia-200702062} elles illustrent les intuitions initiales. Nos observations divergeantes (comme l'illustre la figure \ref{fig:ncd_alea-wikipedia-200702062}), démontrent que notre processus de construction d'une matrice \textbf{NCD} est fragile.\\
+Les resultats observés pour les figures \ref{fig:ncd_alea-nv2}, \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-cs-stanford2}, \ref{fig:ncd_alea-wikipedia-20051105}, \ref{fig:ncd_alea-wikipedia-20070206} et \ref{fig:ncd_alea-wikipedia-200702062} démontrent que retirer aléatoirement des arcs ne réduit pas toujours le temps de convergence de la distribution stationaire mais peut l'augmenter. Tandis que les figures \ref{fig:ncd_alea-wb-cs-stanford}, \ref{fig:ncd_alea-wb-edu}, \ref{fig:ncd_alea-wikipedia-20060925}, \ref{fig:ncd_alea-wikipedia-200609252} et \ref{fig:ncd_alea-wikipedia-200702062} elles illustrent les intuitions initiales. Nos observations divergeantes (comme l'illustre la figure \ref{fig:ncd_alea-wikipedia-200702062}), démontrent que notre processus de construction d'une matrice \textbf{NCD} est fragile.\\
 \\
-En effet pour induire une matrice NCD de la matrice initiale nous retirons des arcs tirés aléatoirement, sans aucune garantie - les figures l'illustrent parfaitement. Le processus étant aléatoire il n'est pas restreint a des composantes connexe du graphe et peut parfaitement retirer un arc constituant à lui seul une composante connexe isolé. La suppresion de l'unique arc sortant d'un noeud provoque la redistribution uniforme de sa probabilité avec tous les autres noeuds, ce qui augmente la variation de $\pi$ et augmente donc le temps de convergence de la distribution stationnaire. Néanmoins cette suppresion d'arc tiré aléatoirement peut aussi mener à isoler des composantes fortements connexe et ainsi générer une matrice NCD et diminuer le temps de convergence de la distribution stationnaire.\\
+En effet pour induire une matrice NCD de la matrice initiale nous retirons des arcs tirés aléatoirement, sans aucune garantie - les figures l'illustrent parfaitement. Le processus étant aléatoire il n'est pas restreint a des composantes connexe du graphe et peut parfaitement retirer un arc constituant à lui seul une composante connexe isolé. La suppresion de l'arc sortant d'un noeud dont le degré sortant est faible (mais $>1$) provoque la redistribution uniforme de sa probabilité avec tous les autres arcs sortant de celui-ci; ce qui augmente le temps de convergence de $\pi$. Néanmoins cette suppresion d'arc tiré aléatoirement peut aussi mener à isoler des composantes fortement connexe et ainsi générer une matrice NCD et diminuer le temps de convergence de la distribution stationnaire.\\
 \\
-De plus on observe que la divergeance du temps de convergeance de $\pi$ entre les différentes matrices s'acroît lorsque $\alpha$ augmente, car $\alpha$ acroît la probabilité des arcs induits de la supression d'un arc appartenant à une composante connexe isolé; ce qui augmente la variabilité de $\pi$ et donc intrinsèquement du temps de convergeance de $\pi$.
+De plus on observe que la divergeance du temps de convergence de $\pi$ entre les différentes matrices s'acroît lorsque $\alpha$ augmente, car $\alpha$ acroît la probabilité des arcs induits de la supression d'un arc appartenant à une composante connexe isolé; ce qui augmente le temps de convergence de $\pi$.
 
-\subsection{Proposition d'une autre construction de matrice NCD}
+\newpage
+\section{Matrice NCD induite du partitionnement du graphe du web}
+
+\subsection{Construction de la matrice NCD}
 
 Bien que très simple, supprimer des arcs aléatoirement ne permet pas de profiter des propriétés d'une matrice NCD, car on ne connait pas la partition du graphe.
 Afin de pouvoir profiter de la structure de la matrice NCD, nous avons donc essayé un autre algorithme de suppression des arcs.
 Pour ce faire, nous avons commencé par créer une partition aléatoire puis supprimer les arcs uniquement entre les groupes de la partition.
 Pour chaque arc entre deux groupes, on le retire avec une probabilité $\frac{1}{1+e^{-(8x-3)}}$ avec x le poids de l'arc.
 Cette fonction suit une sigmoïde choisie arbitrairement pour rapprocher de 1 la probabilité de retirer un arc si son poids est supérieur à 0.5.
+
+\subsection{Algorithme pour calculer la distribution stationnaire}
+
+\subsection{Résultats}
 
 \newpage
 
