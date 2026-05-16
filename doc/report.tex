@@ -8,7 +8,6 @@
 \usepackage{amsmath}
 \usepackage{multirow}
 \usepackage{booktabs}
-\usepackage{graphicx}[]
 \usepackage{float}
 \usepackage{longtable}
 \usepackage{caption}
@@ -39,24 +38,26 @@
 \begin{document}
 
 \begin{titlepage}
-    \centering
-    \vspace*{4cm}
-    {\Huge \textbf{Optimisation de la convergence de PageRank avec les matrices NCD} \par}
+    \begin{center}
 
-    \vspace{3cm}
-    {\Large Projet de Ranking -- M1 Informatique \par}
+        \vspace*{4cm}
+        {\Huge \textbf{Optimisation de la convergence de PageRank avec les matrices NCD} \par}
 
-    \vspace{0.3cm}
-    {\large Optimisation de la convergence de PageRank avec les matrices NCD \par}
-    
-    \vspace{8cm}
-    {\Large Auteur : \textbf{Loïc Desmarès} et \textbf{Baptiste Boisserie} \par}
+        \vspace{3cm}
+        {\Large Projet de Ranking -- M1 Informatique \par}
 
-    \vspace{1cm}
-    {\large Université Paris-Saclay -- UVSQ \par}
+        \vspace{0.3cm}
+        {\large Optimisation de la convergence de PageRank avec les matrices NCD \par}
 
-    \vspace{0.3cm}
-    {\large Année universitaire 2025--2026 \par}
+        \vspace{8cm}
+        {\Large Auteur : \textbf{Loïc Desmarès} et \textbf{Baptiste Boisserie} \par}
+
+        \vspace{1cm}
+        {\large Université Paris-Saclay -- UVSQ \par}
+
+        \vspace{0.3cm}
+        {\large Année universitaire 2025--2026 \par}
+    \end{center}
 \end{titlepage}
 
 \newpage
@@ -83,7 +84,7 @@ En effet pour induire une matrice NCD de la matrice initiale nous retirons des a
 De plus on observe que la divergeance du temps de convergence de $\pi$ entre les différentes matrices s'acroît lorsque $\alpha$ augmente, car $\alpha$ acroît la probabilité des arcs induits de la supression d'un arc appartenant à une composante connexe isolé; ce qui augmente le temps de convergence de $\pi$.
 
 \newpage
-\section{Matrice NCD induite du partitionnement du graphe du web}
+\section{Matrice NCD induite par génération de groupes aléatoire}
 
 \subsection{Construction de la matrice NCD}
 
